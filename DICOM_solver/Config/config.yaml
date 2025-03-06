@@ -1,0 +1,14 @@
+
+rabbitMQ:
+  host: "host.docker.internal"
+  port: "5672"
+  username: "user"
+  password: "password"
+
+postgres:
+    host: "host.docker.internal"
+    port: "5432"
+    username: "postgres"
+    password: "postgres"
+    db: "postgres"
+
