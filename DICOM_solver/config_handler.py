@@ -4,7 +4,6 @@ import logging
 
 def read_config():
     with open('DICOM_solver/Config/config.yaml', 'r') as file:
-    #with open('Config/config.yaml', 'r') as file:
         file_red = yaml.safe_load(file)
         return file_red
 
