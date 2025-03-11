@@ -1,8 +1,17 @@
 import logging
 from .PostgresInterface import PostgresInterface
 from .config_handler import Config
+from .DVH.dvh import DVH_calculation
 import logging
 import pandas as pd
+
+
+class dicom_object:
+    def __init__(self, ct, rtplan, rtdose, rtstruct):
+        self.rt_plan = rtplan
+        self.rt_struct = rtstruct
+        self.rt_dose = rtdose
+        self.ct = ct
 
 
 def connect_db():
@@ -70,6 +79,31 @@ def verify_full(df: pd.DataFrame):
     return result
 
 
+def collect_patients_dicom(df: pd.DataFrame):
+    list_patient = df["patient_id"].values.tolist()
+    list_m = ['CT', 'RTSTRUCT', 'RTPLAN', 'RTDOSE']
+    list_do = []
+    for p_id in list_patient:
+        df_o_p: pd.DataFrame = df.loc[df["patient_id"] == p_id]
+        rt_struct = df_o_p.loc[df["modality"] == "RTSTRUCT"]["file_path"].values.tolist()
+        ct = df_o_p.loc[df["modality"] == "CT"]["file_path"].values.tolist()
+        rt_plan = df_o_p.loc[df["modality"] == "RTPLAN"]["file_path"].values.tolist()
+        rt_dose = df_o_p.loc[df["modality"] == "RTDOSE"]["file_path"].values.tolist()
+        do = dicom_object(ct, rt_plan, rt_dose, rt_struct)
+        list_do.append(do)
+    return list_do
+
+
+def execute_dvh(list_do):
+    for p in list_do:
+        dvh_c = DVH_calculation()
+        dvh_c.get_RT_Dose(p.rt_dose[0])
+        dvh_c.get_RT_Plan(p.rt_plan[0])
+        dvh_c.get_RT_Struct(p.rt_struct[0])
+        dvh_c.get_structures()
+        dvh_c.calculate_dvh_all()
+
+
 def callback(ch, method, properties, body):
     try:
         db = connect_db()
@@ -80,23 +114,14 @@ def callback(ch, method, properties, body):
         logging.info(f"The study uid is :{study_uid}")
         result = get_all_uid(db, study_uid)
         logging.info(f"result is :{result}")
-        verify_full(result)
+        verified = verify_full(result)
+        if verified:
+            list_do = collect_patients_dicom(result)
+            execute_dvh(list_do)
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
 
-    except:
+    except Exception as e:
+        logging.warning(e)
         logging.warning("Error")
-        ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
-
-
-#if __name__ == "__main__":
-#    db = connect_db()
-#
-#    study_uid = "1.3.6.1.4.1.22361.100850137389660.1876094375.1683296334941.2"
-#    if study_uid is None:
-#        raise Exception
-#    logging.info(f"The study uid is :{study_uid}")
-#    result = get_all_uid(db, study_uid)
-#    print(verify_full(result))
-
-
+        ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
