@@ -4,3 +4,5 @@ pydicom
 pyyaml
 pika
 pandas
+rdflib
+dicompyler-core
