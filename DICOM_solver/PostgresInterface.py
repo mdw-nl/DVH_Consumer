@@ -1,7 +1,6 @@
 import logging
 
 import psycopg2
-from psycopg2 import sql
 from .Config.global_var import NUMBER_ATTEMPTS, RETRY_DELAY_IN_SECONDS
 from time import sleep
 

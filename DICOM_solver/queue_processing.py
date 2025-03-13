@@ -1,7 +1,4 @@
 import pika
-from .config_handler import Config
-from .PostgresInterface import PostgresInterface
-import logging
 
 RABBITMQ_URL = "amqp://user:password@host.docker.internal:5672/"
 QUEUE_NAME = "DICOM_Processor"

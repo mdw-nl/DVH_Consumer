@@ -1,4 +1,3 @@
-from abc import ABC, abstractmethod
 from dicompylercore import dicomparser, dvh, dvhcalc
 from uuid import uuid4
 import numpy as np
