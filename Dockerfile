@@ -4,6 +4,7 @@ WORKDIR /DICOM_solver
 
 COPY DICOM_solver DICOM_solver
 COPY main.py main.py
+COPY output output
 COPY requirements.txt requirements.txt
 
 ENV PYTHONPATH "${PYTHONPATH}:/DICOM_solver"

@@ -2,14 +2,23 @@
 import datetime
 import dicompylercore
 from uuid import uuid4
-
+import json
+import os
 import logging
 
 
 
 
-logging.info("Calculation Complete ")
-def calculate_dvh_folder(patient_id, calculatedDose):
+class DVH_Output:
+    def __init__(self):
+        self.structure_name = None,
+        self.min = None
+        self.max = None
+        self.mean = None
+        self.volume = None
+
+
+def return_output(patient_id, calculatedDose):
     """
 
 
@@ -120,9 +129,10 @@ def calculate_dvh_folder(patient_id, calculatedDose):
         "dateCreated": datetime.datetime.now().isoformat(),
         "containsStructureDose": [calculatedDose]
     }
+   # Get script directory
 
-    #filename = os.path.join(folder_to_store_results, f"{uuid_for_calculation}.jsonld")
-    #logging.info("Saving in" + str(filename))
+    #filename = os.path.join("./output/", f"{uuid_for_calculation}.jsonld")
+    #logging.info("Saving in " + str(filename))
     #with open(filename, "w") as f:
     #    json.dump(resultDict, f)
     #    logging.info("Saving done")

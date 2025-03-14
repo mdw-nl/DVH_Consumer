@@ -3,6 +3,8 @@ from dicompylercore import dicomparser, dvh, dvhcalc
 from uuid import uuid4
 import numpy as np
 import logging
+import traceback
+
 
 
 def prepare_output(dvh_points, structure, calc_dvh, dict_value):
@@ -33,6 +35,7 @@ def prepare_output(dvh_points, structure, calc_dvh, dict_value):
             "dvh_points": dvh_points
         }
     }
+
     return structOut
 
 
@@ -66,8 +69,7 @@ class DVH_calculation:
     def get_structures(self):
         self.structures = self.RT_struct.GetStructures()
 
-
-    def process_dvh_result(self, calculation_r):
+    def process_dvh_result(self, calculation_r, index):
         dvh_d = calculation_r.bincenters.tolist()
         dvh_v = calculation_r.counts.tolist()
         dvh_points = []
@@ -85,28 +87,33 @@ class DVH_calculation:
                 except (AttributeError, ValueError, TypeError) as e:
                     logging.warning(f"Value not available for {key}, setting to None.")
                     logging.error(e)
+
                     dict_values[key] = None
 
-            structOut = prepare_output(dvh_points, self.structures, calculation_r, dict_values)
+            structOut = prepare_output(dvh_points, self.structures[index], calculation_r, dict_values)
             self.output.append(structOut)
 
     def calculate_dvh_all(self):
         for index in self.structures:
-            logging.info("Calculating structures " + str(self.structures[index]))
+            logging.warning("Calculating structures " + str(self.structures[index]))
 
             try:
-                #calc_dvh = self.get_dvh_v(self.RT_struct, self.RT_dose, index, self.RT_plan)
+                # calc_dvh = self.get_dvh_v(self.RT_struct, self.RT_dose, index, self.RT_plan)
                 calc_dvh = self.calculate_dvh(index)
             except Exception as except_t:
                 logging.warning(except_t)
+                logging.warning("Error something wrong")
+                logging.warning(traceback.format_exc())
                 logging.warning("Skipping...")
+
                 continue
 
             try:
-                self.process_dvh_result(calc_dvh)
+                self.process_dvh_result(calc_dvh, index)
             except Exception as e:
                 logging.info("error")
                 logging.warning(e)
+                logging.warning(traceback.format_exc())
                 continue
 
     def calculate_dvh(self, index):
@@ -115,11 +122,11 @@ class DVH_calculation:
         :param index:
         :return:
         """
-        calc_dvh = self.get_dvh_v(self.RT_struct, self.RT_dose, index, self.RT_plan)
+        calc_dvh = self.get_dvh_v(structure=self.RT_struct, dose_data=self.RT_dose, roi=index, rt_plan_p=self.RT_plan)
 
         return calc_dvh
 
-    def get_dvh_v(self,structure,
+    def get_dvh_v(self, structure,
                   dose_data,
                   roi,
                   rt_plan_p=None,
@@ -173,13 +180,14 @@ class DVH_calculation:
             different formats using the attributes and properties of the DVH class.
         """
 
-        rt_str = dicomparser.DicomParser(structure)
+        rt_str = structure
         if type(dose_data) is str:
             rt_dose = dicomparser.DicomParser(dose_data, memmap_pixel_array=memmap_rtdose)
         else:
             rt_dose = dose_data
         structures = rt_str.GetStructures()
         s = structures[roi]
+        logging.debug(f"Structure selected {s}")
         s['planes'] = rt_str.GetStructureCoordinates(roi)
         s['thickness'] = thickness if thickness else rt_str.CalculatePlaneThickness(
             s['planes'])
@@ -189,10 +197,11 @@ class DVH_calculation:
                                           interpolation_segments_between_planes,
                                           callback)
         if rt_plan_p is not None:
-            rt_plan = dicomparser.DicomParser(rt_plan_p)
+            rt_plan = rt_plan_p
 
             plan = rt_plan.GetPlan()
             if plan['rxdose'] is not None:
+                logging.debug("rx dose does exist in the rt plan")
 
                 return dvh.DVH(counts=calc_dvh.histogram,
                                bins=(np.arange(0, 2) if (calc_dvh.histogram.size == 1) else
@@ -203,6 +212,7 @@ class DVH_calculation:
                                name=s['name'],
                                rx_dose=plan['rxdose'] / 100).cumulative
             else:
+                logging.debug("rx dose does not exist in the rt plan")
                 return dvh.DVH(counts=calc_dvh.histogram,
                                bins=(np.arange(0, 2) if (calc_dvh.histogram.size == 1) else
                                      np.arange(0, calc_dvh.histogram.size + 1) / 100),
