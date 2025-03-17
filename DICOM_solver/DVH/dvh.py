@@ -80,18 +80,19 @@ class DVH_calculation:
                 "d_point": dvh_d[i],
                 "v_point": dvh_v[i]
             })
-            for v in [5, 10, 20, 30, 40, 50, 60]:
-                key = f"V{v}value"
-                try:
-                    dict_values[key] = float(getattr(calculation_r, f"V{v}").value)
-                except (AttributeError, ValueError, TypeError) as e:
-                    logging.warning(f"Value not available for {key}, setting to None.")
-                    logging.error(e)
+        for v in [5, 10, 20, 30, 40, 50, 60]:
+            key = f"V{v}value"
+            try:
+                dict_values[key] = float(getattr(calculation_r, f"V{v}").value)
+            except (AttributeError, ValueError, TypeError) as e:
+                logging.warning(f"Value not available for {key}, setting to None.")
+                logging.error(e)
+                dict_values[key] = None
 
-                    dict_values[key] = None
-
-            structOut = prepare_output(dvh_points, self.structures[index], calculation_r, dict_values)
-            self.output.append(structOut)
+        structOut = prepare_output(dvh_points, self.structures[index], calculation_r, dict_values)
+        n_s = structOut["structureName"]
+        logging.info(f"Structure: {n_s}")
+        self.output.append(structOut)
 
     def calculate_dvh_all(self):
         for index in self.structures:

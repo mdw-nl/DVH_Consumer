@@ -1,11 +1,10 @@
-import logging
 from .PostgresInterface import PostgresInterface
 from .config_handler import Config
 from .DVH.dvh import DVH_calculation
 import logging
 import pandas as pd
 import traceback
-
+import os
 from .dicom_process import dicom_object
 from .DVH.output import return_output
 
@@ -128,7 +127,9 @@ def execute_dvh(list_do):
         dvh_c.get_RT_Struct(p.rt_struct[0])
         dvh_c.get_structures()
         dvh_c.calculate_dvh_all()
-        return_output("x", dvh_c.output)
+        return_output(p.p_id, dvh_c.output)
+        break
+
         logging.info(f"Calculation complete for {p.p_id}")
 
 
