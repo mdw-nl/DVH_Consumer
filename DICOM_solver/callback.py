@@ -128,8 +128,6 @@ def execute_dvh(list_do):
         dvh_c.get_structures()
         dvh_c.calculate_dvh_all()
         return_output(p.p_id, dvh_c.output)
-        break
-
         logging.info(f"Calculation complete for {p.p_id}")
 
 
