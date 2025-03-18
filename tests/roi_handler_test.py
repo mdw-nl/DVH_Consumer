@@ -16,7 +16,7 @@ ROI_KIDNEY_RIGHT = "Kidney - right_P"
 ROI_GTV = "GTV_P"
 OPERATION_ADDITION = "+"
 OPERATION_SUBTRACTION = "-"
-
+# Tom
 class TestROIHandler(unittest.TestCase):
     rtstruct = None
 
