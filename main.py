@@ -2,8 +2,10 @@ from DICOM_solver.queue_processing import Consumer
 from DICOM_solver.callback import callback
 import logging
 from DICOM_solver.config_handler import Config
+
+
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
     handlers=[logging.StreamHandler()]
 )

@@ -16,6 +16,7 @@ class PostgresInterface:
         self.cursor = None
         self.port = port
 
+
     def connect(self):
         """Connect to the PostgreSQL database."""
         for attempt in range(NUMBER_ATTEMPTS):
