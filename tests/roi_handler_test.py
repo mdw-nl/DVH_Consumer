@@ -4,8 +4,10 @@ import unittest
 import os
 import zipfile
 import DICOM_solver.roi_handler as roi_handler
+import DICOM_solver.loading_mask as load_mask
 import urllib.request
 from rt_utils import RTStructBuilder
+import numpy as np
 
 ZIP_PATH = 'dicomtestdata.zip'
 DICOM_DATA_PATH = 'dicomdata'
@@ -14,9 +16,12 @@ RTSTRUCT_FILENAME = "RS.PYTIM05_.dcm"
 ROI_KIDNEY_LEFT = "Kidney - left_P"
 ROI_KIDNEY_RIGHT = "Kidney - right_P"
 ROI_GTV = "GTV_P"
+ROI_PTV = "PTV_P"
+ROI_CTV = "CTV_P"
+ROI_VESSELS = "Vessels_P"
 OPERATION_ADDITION = "+"
 OPERATION_SUBTRACTION = "-"
-# Tom
+
 class TestROIHandler(unittest.TestCase):
     rtstruct = None
 
@@ -30,16 +35,23 @@ class TestROIHandler(unittest.TestCase):
         self.rtstruct = RTStructBuilder.create_from(dicom_series_path, rtstruct_path)
 
     def test_combine_rois_addition(self):
-        combined_mask = roi_handler.combine_rois(self.rtstruct, [ROI_KIDNEY_LEFT, ROI_KIDNEY_RIGHT], [OPERATION_ADDITION])
-        print(combined_mask)
-
+        combined_mask = roi_handler.combine_rois(self.rtstruct, [ROI_PTV, ROI_VESSELS], [OPERATION_ADDITION])
+        mask_3d_comp = load_mask.load_mask("dicomdata", "RS_PTV+Vessels.dcm","PTV+Vessels")
+        are_equal = np.array_equal(combined_mask, mask_3d_comp)
+        self.assertTrue(are_equal) 
+        
     def test_combine_rois_subtraction(self):
-        combined_mask = roi_handler.combine_rois(self.rtstruct, [ROI_KIDNEY_LEFT, ROI_GTV], [OPERATION_SUBTRACTION])
-        print(combined_mask)
-
+        combined_mask = roi_handler.combine_rois(self.rtstruct, [ROI_PTV, ROI_VESSELS], [OPERATION_SUBTRACTION])
+        mask_3d_comp = load_mask.load_mask("dicomdata", "RS_PTV-Vessels.dcm","PTV-Vessels")
+        are_equal = np.array_equal(combined_mask, mask_3d_comp)
+        self.assertTrue(are_equal)        
+        
     def test_combine_rois_multiple(self):
-        combined_mask = roi_handler.combine_rois(self.rtstruct, [ROI_KIDNEY_LEFT, ROI_KIDNEY_RIGHT, ROI_GTV], [OPERATION_ADDITION, OPERATION_SUBTRACTION])
-        print(combined_mask)
+        combined_mask = roi_handler.combine_rois(self.rtstruct, [ROI_PTV, ROI_VESSELS, ROI_CTV], [OPERATION_ADDITION, OPERATION_SUBTRACTION])
+        mask_3d_comp = load_mask.load_mask("dicomdata", "RS_PTV+Vessels-CTV.dcm","PTV+Vessels-CTV")
+        are_equal = np.array_equal(combined_mask, mask_3d_comp)
+        self.assertTrue(are_equal) 
+        
 
     def test_combine_rois_invalid(self):
         with self.assertRaises(AssertionError):

@@ -5,17 +5,20 @@ import numpy as np
 from rt_utils import RTStruct
 
 def combine_rois(rtstruct: RTStruct, rois: List[str], operators: List[str]) -> array[bool]:
-    assert rois.__len__() - 1 == operators.__len__(), "There should be exactly one operator less than the number of ROIs in order to combine the ROIs."
-    combined_mask = np.zeros((512, 512, 290), dtype=bool)
-    operatorCount = -1
-    for roi in rois:
-        roiMask = rtstruct.get_roi_mask_by_name(roi)
-        if operatorCount == -1:
-            combinedMask = roiMask
-        if operators[operatorCount] == "+":
-            combined_mask = np.logical_or(combinedMask, roiMask)
-        elif operators[operatorCount] == "-":
-            combined_mask = np.logical_and(combinedMask, np.logical_not(roiMask))
-        operatorCount += 1
-    print(f"Mask for {roi}: {combined_mask}")
+    assert len(rois) - 1 == len(operators), "There should be exactly one operator less than the number of ROIs."
+
+    # Start with the first ROI mask
+    combined_mask = rtstruct.get_roi_mask_by_name(rois[0])
+
+    # Iterate through the remaining ROIs along with their corresponding operators
+    for i in range(1, len(rois)):
+        roi_mask = rtstruct.get_roi_mask_by_name(rois[i])
+
+        if operators[i - 1] == "+":
+            combined_mask = np.logical_or(combined_mask, roi_mask)
+        elif operators[i - 1] == "-":
+            combined_mask = np.logical_and(combined_mask, np.logical_not(roi_mask))
+        else:
+            raise ValueError(f"Invalid operator '{operators[i - 1]}'. Expected '+' or '-'.")
+
     return combined_mask
