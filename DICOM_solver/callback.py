@@ -4,7 +4,7 @@ from .DVH.dvh import DVH_calculation
 import logging
 import pandas as pd
 import traceback
-import os
+from .Config.global_var import QUERY_UID
 from .dicom_process import dicom_object
 from .DVH.output import return_output
 
@@ -20,16 +20,16 @@ def connect_db():
     return db
 
 
-def get_all_uid(db, uid):
+def get_all_uid(db, uid, query):
     """
 
     :param db:
     :param uid:
     :return:
     """
-    query = f"Select * from public.dicom_insert where study_instance_uid ='{uid}';"
+
     try:
-        df = pd.read_sql_query(query, db.conn)
+        df = pd.read_sql_query(query, db.conn, params=[uid])
     except Exception as e:
         raise e
     return df
@@ -97,7 +97,7 @@ def link_rt_plan_dose(df, rt_plan_uid_list,p_id, ct, rt_struct):
 
 def collect_patients_dicom(df: pd.DataFrame):
     """
-
+    The function create a
     :param df:
     :return:
     """
@@ -138,7 +138,7 @@ def process_message(study_uid):
         if study_uid is None:
             raise Exception(f"Study uid is : {study_uid}")
         logging.info(f"The study uid is :{study_uid}")
-        result = get_all_uid(db, study_uid)
+        result = get_all_uid(db, study_uid, query=QUERY_UID)
 
         verified = verify_full(result)
         if verified:
@@ -157,7 +157,7 @@ def callback(ch, method, properties, body, executor):
     study_uid = body.decode()
     try:
         future = executor.submit(process_message, study_uid)  # Run processing in a separate thread
-        result = future.result()  # Wait for the thread to complete
+        future.result()  # Wait for the thread to complete
         logging.info("Finish")
 
         ch.basic_ack(delivery_tag=method.delivery_tag)  # ACK if successful
