@@ -4,7 +4,7 @@ import unittest
 import os
 import zipfile
 import DICOM_solver.roi_handler as roi_handler
-import DICOM_solver.loading_mask as load_mask
+from DICOM_solver.loading_mask import load_mask
 import urllib.request
 from rt_utils import RTStructBuilder
 import numpy as np
@@ -33,26 +33,25 @@ class TestROIHandler(unittest.TestCase):
         rtstruct_path = os.path.join(DICOM_DATA_PATH, RTSTRUCT_FILENAME)
         dicom_series_path = os.path.join(DICOM_DATA_PATH)
         self.rtstruct = RTStructBuilder.create_from(dicom_series_path, rtstruct_path)
-
+        
     def test_combine_rois_addition(self):
         combined_mask = roi_handler.combine_rois(self.rtstruct, [ROI_PTV, ROI_VESSELS], [OPERATION_ADDITION])
-        mask_3d_comp = load_mask.load_mask("dicomdata", "RS_PTV+Vessels.dcm","PTV+Vessels")
+        mask_3d_comp = load_mask("dicomdata", "RS_PTV+Vessels.dcm","PTV+Vessels")
         are_equal = np.array_equal(combined_mask, mask_3d_comp)
         self.assertTrue(are_equal) 
         
     def test_combine_rois_subtraction(self):
         combined_mask = roi_handler.combine_rois(self.rtstruct, [ROI_PTV, ROI_VESSELS], [OPERATION_SUBTRACTION])
-        mask_3d_comp = load_mask.load_mask("dicomdata", "RS_PTV-Vessels.dcm","PTV-Vessels")
+        mask_3d_comp = load_mask("dicomdata", "RS_PTV-Vessels.dcm","PTV-Vessels")
         are_equal = np.array_equal(combined_mask, mask_3d_comp)
         self.assertTrue(are_equal)        
         
     def test_combine_rois_multiple(self):
         combined_mask = roi_handler.combine_rois(self.rtstruct, [ROI_PTV, ROI_VESSELS, ROI_CTV], [OPERATION_ADDITION, OPERATION_SUBTRACTION])
-        mask_3d_comp = load_mask.load_mask("dicomdata", "RS_PTV+Vessels-CTV.dcm","PTV+Vessels-CTV")
+        mask_3d_comp = load_mask("dicomdata", "RS_PTV+Vessels-CTV.dcm","PTV+Vessels-CTV")
         are_equal = np.array_equal(combined_mask, mask_3d_comp)
         self.assertTrue(are_equal) 
-        
-
+            
     def test_combine_rois_invalid(self):
         with self.assertRaises(AssertionError):
             roi_handler.combine_rois(self.rtstruct, [ROI_KIDNEY_LEFT, ROI_KIDNEY_RIGHT], [OPERATION_ADDITION, OPERATION_SUBTRACTION])
