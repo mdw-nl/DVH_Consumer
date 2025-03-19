@@ -107,6 +107,7 @@ def collect_patients_dicom(df: pd.DataFrame):
         df_o_p: pd.DataFrame = df.loc[df["patient_id"] == p_id]
         ref_rt_plan_uid_list = df_o_p["referenced_rt_plan_uid"].values.tolist()
         rt_struct = df_o_p.loc[df["modality"] == "RTSTRUCT"]["file_path"].values.tolist()
+        # path to the ct scan needs to be checked
         ct = df_o_p.loc[df["modality"] == "CT"]["file_path"].values.tolist()
         ref_rt_plan_uid_list = [uid for uid in ref_rt_plan_uid_list if uid != "UNKNOWN"]
         list_do = link_rt_plan_dose(df_o_p,ref_rt_plan_uid_list,p_id, ct, rt_struct)
@@ -164,4 +165,7 @@ def callback(ch, method, properties, body, executor):
 
     except Exception as e:
         print(f"Error processing message: {e}")
-        ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
+        ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
+        # push to another queue if there is an error ?
+        # how to retry this ?
+        #

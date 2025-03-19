@@ -6,7 +6,7 @@ import json
 import os
 import logging
 from ..graphdb import upload_jsonld_to_graphdb
-
+from ..config_handler import Config
 
 
 
@@ -30,7 +30,12 @@ def return_output(patient_id, calculatedDose):
     """
 
     uuid_for_calculation = uuid4()
-    graphdb_url = os.getenv('GRAPHDB_URL')
+    gdb = Config("GraphDB")
+    config_dict_gdb = gdb.config
+    host = config_dict_gdb["host"]
+    port = config_dict_gdb["port"]
+    repo = config_dict_gdb["repo"]
+    graphdb_url = f"http://{host}:{port}/repositories/{repo}/statements"
 
     for j in calculatedDose:
         resultDict = {
