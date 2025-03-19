@@ -12,4 +12,12 @@ postgres:
     password: "postgres"
     db: "postgres"
 
-
+dvh-calculations:
+  - 
+    MeanDoseIpsiLateralParotidGland:
+      roi: "Parotid_Ipsilateral"
+      type: mean-dose
+  -
+    MeanDoseSubmandibularGlands:
+      roi: "Parotid-L + Parotid_R"
+      type: mean-dose
