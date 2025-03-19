@@ -33,6 +33,19 @@ class TestROIHandler(unittest.TestCase):
         rtstruct_path = os.path.join(DICOM_DATA_PATH, RTSTRUCT_FILENAME)
         dicom_series_path = os.path.join(DICOM_DATA_PATH)
         self.rtstruct = RTStructBuilder.create_from(dicom_series_path, rtstruct_path)
+    
+    def test_combine_rois_addition_to_base_ROI(self):
+        ROIS = [ROI_PTV, ROI_VESSELS]
+        combined_mask = roi_handler.combine_rois(self.rtstruct, ROIS, [OPERATION_ADDITION])
+        
+        test_values = []
+        for roi in ROIS:
+            mask_roi = load_mask("dicomdata", "RS.PYTIM05_.dcm", roi)
+            is_subset = np.all(mask_roi <= combined_mask)
+            test_values.append(is_subset)
+            
+        all_true = np.all(test_values)
+        self.assertTrue(all_true)
         
     def test_combine_rois_addition(self):
         combined_mask = roi_handler.combine_rois(self.rtstruct, [ROI_PTV, ROI_VESSELS], [OPERATION_ADDITION])
