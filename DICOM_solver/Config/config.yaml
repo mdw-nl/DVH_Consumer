@@ -19,5 +19,5 @@ dvh-calculations:
       type: mean-dose
   -
     MeanDoseSubmandibularGlands:
-      roi: "Parotid-L + Parotid_R"
+      roi: "Liver_P - Vessels_P"
       type: mean-dose
