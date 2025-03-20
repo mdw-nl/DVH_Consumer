@@ -21,7 +21,7 @@ ROI_CTV = "CTV_P"
 ROI_VESSELS = "Vessels_P"
 OPERATION_ADDITION = "+"
 OPERATION_SUBTRACTION = "-"
-
+# Schrijf nog wat addition testjes voor substraction misschien zelfs voor combine
 class TestROIHandler(unittest.TestCase):
     rtstruct = None
 
@@ -44,8 +44,21 @@ class TestROIHandler(unittest.TestCase):
             is_subset = np.all(mask_roi <= combined_mask)
             test_values.append(is_subset)
             
-        all_true = np.all(test_values)
-        self.assertTrue(all_true)
+        self.assertTrue(np.all(test_values))
+    
+    def test_combine_rois_substraction_to_base_ROI(self):
+        ROIS = [ROI_PTV, ROI_VESSELS]
+        combined_mask = roi_handler.combine_rois(self.rtstruct, ROIS, [OPERATION_SUBTRACTION])
+        
+        first_roi_mask = self.rtstruct.get_roi_mask_by_name(ROIS[0])
+        second_roi_mask = self.rtstruct.get_roi_mask_by_name(ROIS[1])
+        condition_mask = np.logical_and(first_roi_mask, np.logical_not(second_roi_mask))
+        # First condition check: when ROI[0] = pos and ROI[1] = neg that combined_mask = pos
+        # Second condition check: when ROI[1] = pos that combined_mask = neg
+        condition_met_ROI1_pos_ROI2_neg = np.all(combined_mask[condition_mask] == True)
+        condition_met_ROI2_pos = np.all(combined_mask[second_roi_mask] == False)
+        
+        self.assertTrue(np.all([condition_met_ROI1_pos_ROI2_neg, condition_met_ROI2_pos])) 
         
     def test_combine_rois_addition(self):
         combined_mask = roi_handler.combine_rois(self.rtstruct, [ROI_PTV, ROI_VESSELS], [OPERATION_ADDITION])
@@ -60,7 +73,7 @@ class TestROIHandler(unittest.TestCase):
         self.assertTrue(are_equal)        
         
     def test_combine_rois_multiple(self):
-        combined_mask = roi_handler.combine_rois(self.rtstruct, [ROI_PTV, ROI_VESSELS, ROI_CTV], [OPERATION_ADDITION, OPERATION_SUBTRACTION])
+        combined_mask = roi_handler.combine_rois(self.rtstruct, [ROI_PTV, ROI_CTV, ROI_VESSELS], [OPERATION_SUBTRACTION, OPERATION_ADDITION])
         mask_3d_comp = load_mask("dicomdata", "RS_PTV+Vessels-CTV.dcm","PTV+Vessels-CTV")
         are_equal = np.array_equal(combined_mask, mask_3d_comp)
         self.assertTrue(are_equal) 
