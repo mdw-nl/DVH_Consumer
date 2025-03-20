@@ -125,7 +125,7 @@ class DVH_calculation:
         calc_dvh = self.get_dvh_v(structure=self.RT_struct, dose_data=self.RT_dose, roi=index, rt_plan_p=self.RT_plan)
 
         return calc_dvh
-
+    
     def get_dvh_v(self, structure,
                   dose_data,
                   roi,
@@ -188,9 +188,27 @@ class DVH_calculation:
         structures = rt_str.GetStructures()
         s = structures[roi]
         logging.debug(f"Structure selected {s}")
-        s['planes'] = rt_str.GetStructureCoordinates(roi)
-        s['thickness'] = thickness if thickness else rt_str.CalculatePlaneThickness(
-            s['planes'])
+        if thickness is None:
+            thickness = rt_str.CalculatePlaneThickness(s['planes'])
+        self.get_dvh_v_for_bitmask(rt_str.GetStructureCoordinates(roi), s, rt_plan_p, limit, calculate_full_volume,
+                                      use_structure_extents, interpolation_resolution, interpolation_segments_between_planes,
+                                      thickness, callback)
+
+    def get_dvh_v_for_bitmask(self,
+                  planes,
+                  roi_bitmask,
+                  rt_plan_p=None,
+                  limit=None,
+                  calculate_full_volume=True,
+                  use_structure_extents=False,
+                  interpolation_resolution=None,
+                  interpolation_segments_between_planes=0,
+                  thickness=None,
+                  callback=None):
+        s = roi_bitmask
+        logging.debug(f"Structure selected {s}")
+        s['planes'] = planes
+        s['thickness'] = thickness
 
         calc_dvh = dvhcalc._calculate_dvh(s, rt_dose, limit, calculate_full_volume,
                                           use_structure_extents, interpolation_resolution,
