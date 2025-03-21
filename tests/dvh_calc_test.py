@@ -1,17 +1,14 @@
 #!/usr/bin/env python
-import logging
 import unittest
 import os
-import pydicom
 import zipfile
 import urllib.request
 from rt_utils import RTStructBuilder
-import numpy as np
 import re
 import DICOM_solver.roi_handler as roi_handler
 from DICOM_solver.DVH.dvh import DVH_calculation
 from DICOM_solver.config_handler import Config
-
+from dicompylercore import dicomparser
 
 ZIP_PATH = 'dicomtestdata.zip'
 DICOM_DATA_PATH = 'dicomdata'
@@ -58,25 +55,44 @@ class TestROIHandler(unittest.TestCase):
                 ROI_list.append(parts)
         
         combined_mask = roi_handler.combine_rois(self.rtstruct, ROI_list, operations_list)
-        
+        self.rtstruct.add_roi(mask=combined_mask, name=PTV_VESSELS_CTV, approximate_contours=False)
+
+        roiNumber = None
+        index = 0
+        for structure_roi in self.rtstruct.ds.StructureSetROISequence:
+            if structure_roi.ROIName == PTV_VESSELS_CTV:
+                roiNumber = structure_roi.ROINumber
+                break
+            index += 1
+                    
+        rt_struct = dicomparser.DicomParser(self.rtstruct.ds)
+
         file_path_RTdose = os.path.join("dicomdata", "RD.PYTIM05_.dcm")
         file_path_RTplan = os.path.join("dicomdata", "RP.PYTIM05_PS2.dcm")
-        file_path_RTstruct = os.path.join("dicomdata", "RS_PTV+Vessels-CTV.dcm")
         
         dvh_c = DVH_calculation()
         dvh_c.get_RT_Dose(file_path_RTdose)
         dvh_c.get_RT_Plan(file_path_RTplan)
-        dvh_c.get_RT_Struct(file_path_RTstruct)
+        dvh_c.get_RT_Struct(self.rtstruct.ds)
         dvh_c.get_structures()
-        dvh_c.calculate_dvh_all()
-        output = dvh_c.output
+
+        dose_data = dicomparser.DicomParser(file_path_RTdose)
+        rt_plan = dicomparser.DicomParser(file_path_RTplan)
+
+        output = dvh_c.get_dvh_v(rt_struct,
+                  dose_data,
+                  roiNumber,
+                  rt_plan)
+        dvh_c.process_dvh_result(output, index)
+
+        print(dvh_c.output)
 
         # Iterate over the output list to access the mean values
-        for structure in output:
-            if structure["structureName"] == PTV_VESSELS_CTV:
-                print(f"mean {PTV_VESSELS_CTV} {structure["mean"]["value"]}")
-                print(f"volume {PTV_VESSELS_CTV} {structure["volume"]["value"]}")# Extract the mean dose value
-                break
+        # for structure in output:
+        #     if structure["structureName"] == PTV_VESSELS_CTV:
+        #         print(f"mean {PTV_VESSELS_CTV} {structure["mean"]["value"]}")
+        #         print(f"volume {PTV_VESSELS_CTV} {structure["volume"]["value"]}")# Extract the mean dose value
+        #         break
         
 if __name__ == '__main__':
     unittest.main()
