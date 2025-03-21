@@ -109,7 +109,7 @@ def collect_patients_dicom(df: pd.DataFrame):
         rt_struct = df_o_p.loc[df["modality"] == "RTSTRUCT"]["file_path"].values.tolist()
         # path to the ct scan needs to be checked
         ct = df_o_p.loc[df["modality"] == "CT"]["file_path"].values.tolist()
-        ref_rt_plan_uid_list = [uid for uid in ref_rt_plan_uid_list if uid != "UNKNOWN"]
+        ref_rt_plan_uid_list = [uid for uid in ref_rt_plan_uid_list if (uid != "UNKNOWN" and uid is not None)]
         list_do = link_rt_plan_dose(df_o_p, ref_rt_plan_uid_list,p_id, ct, rt_struct)
         result_list.extend(list_do)
 

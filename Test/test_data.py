@@ -1,9 +1,14 @@
 import pandas as pd
 from datetime import datetime
+from DICOM_solver.dicom_process import dicom_object
 
 
 def generate_df_sample():
     # Define sample data
+    dp1 = dicom_object("P001", ["/dicom/P001/study1/ct.dcm"], ["/dicom/P001/study1/rtplan.dcm"],
+                       ["/dicom/P001/study1/rtdose.dcm"], ["/dicom/P001/study1/rtstruct.dcm"])
+    dp2 = dicom_object("P002", ["/dicom/P002/study2/ct.dcm"], ["/dicom/P002/study2/rtplan.dcm"],
+                       ["/dicom/P002/study2/rtdose.dcm"], ["/dicom/P002/study2/rtstruct.dcm"])
     data = {
         "id": [1, 2, 3, 4, 5, 6, 7, 8],
         "timestamp": [datetime(2024, 3, 19, 12, 0, 0)] * 8,  # Same timestamp for all rows
@@ -45,4 +50,4 @@ def generate_df_sample():
 
     # Create DataFrame
     df_res = pd.DataFrame(data)
-    return df_res
+    return df_res, dp1, dp2
