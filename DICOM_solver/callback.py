@@ -38,8 +38,8 @@ def get_all_uid(db, uid, query):
 def check_if_all_in(list_v):
     list_m = ['CT', 'RTSTRUCT', 'RTPLAN', 'RTDOSE']
     value_ = False
-    for e in list_v:
-        if e not in list_m:
+    for e in list_m:
+        if e not in list_v:
             return False
         else:
             value_ = True
@@ -110,7 +110,7 @@ def collect_patients_dicom(df: pd.DataFrame):
         # path to the ct scan needs to be checked
         ct = df_o_p.loc[df["modality"] == "CT"]["file_path"].values.tolist()
         ref_rt_plan_uid_list = [uid for uid in ref_rt_plan_uid_list if uid != "UNKNOWN"]
-        list_do = link_rt_plan_dose(df_o_p,ref_rt_plan_uid_list,p_id, ct, rt_struct)
+        list_do = link_rt_plan_dose(df_o_p, ref_rt_plan_uid_list,p_id, ct, rt_struct)
         result_list.extend(list_do)
 
     return result_list
