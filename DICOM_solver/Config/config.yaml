@@ -15,9 +15,14 @@ postgres:
 dvh-calculations:
   - 
     MeanDoseIpsiLateralParotidGland:
-      roi: "Parotid_Ipsilateral"
+      roi: "PTV_P"
       type: mean-dose
   -
     MeanDoseSubmandibularGlands:
-      roi: "Liver_P - Vessels_P"
+      roi: "PTV_P - Vessels_P"
       type: mean-dose
+  -
+    TestPTV_P-Vessels_P:
+      roi: "PTV_P - Vessels_P"
+      type: mean-dose
+  
