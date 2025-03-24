@@ -15,14 +15,49 @@ postgres:
 dvh-calculations:
   - 
     MeanDoseIpsiLateralParotidGland:
-      roi: "PTV_P"
+      roi: "Parotid_Ipsilateral"
+      type: mean-dose
+  - 
+    MeanDoseContraLateralParotidGland:
+      roi: "Parotid_Contralateral"
       type: mean-dose
   -
     MeanDoseSubmandibularGlands:
-      roi: "PTV_P - Vessels_P"
+      roi: "Submandibular_L + Submandibular_R"
       type: mean-dose
   -
     TestPTV_P-Vessels_P:
       roi: "PTV_P - Vessels_P"
       type: mean-dose
-  
+  -
+    MeanDoseOralCavity:
+      roi: "OralCavity_Ext"
+      type: mean-dose
+  -
+    MeanDosePCMSuperior:
+      roi: "PCM_Sup"
+      type: mean-dose
+  -
+    MeanDosePCMMiddle:
+      roi: "PCM_Med"
+      type: mean-dose
+  -
+    MeanDosePCMInferior:
+      roi: "PCM_Inf"
+      type: mean-dose
+  -
+    MeanDoseLung:
+      roi: "Lung_L + Lung_R"
+      type: mean-dose
+  -
+    LogMeanEsophagealDose:
+      roi: "Esophagus"
+      type: mean-dose
+  -
+    SquareRootMeanDoseHeart:
+      roi: "Heart"
+      type: mean-dose
+  -
+    SquareRootGrossTumorVolume:
+      roi: "Tumor"
+      type: Gross-Volume
