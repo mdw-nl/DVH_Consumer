@@ -56,15 +56,18 @@ class TestROIHandler(unittest.TestCase):
         return standardized_name_dict
 
     def test_calc_d_mean(self):
+        # Get the dvh-calculations from the config file and get the dict for the standarized names
         dvh_calculations_list = Config("dvh-calculations").config
-        standarized_name_dict = standarized_name_dict()
+        standarized_name_dict = self.standarized_name_dict()
         
+        # Loop over all the items in the config file
         for item in dvh_calculations_list:
             for key, value in item.items():
                 roi_string = value["roi"]
 
             string_parts = re.split(r'\s+', roi_string)
             
+            # create two list for the operations and the ROIS with rtstruct names    
             ROI_total_string = ""
             operations_list = []
             ROI_list = []
@@ -75,6 +78,7 @@ class TestROIHandler(unittest.TestCase):
                 else:
                     ROI_list.append(standarized_name_dict[parts])
             
+            # Add the new ROI to the rtstruct
             combined_mask = roi_handler.combine_rois(self.rtstruct, ROI_list, operations_list)
             self.rtstruct.add_roi(mask=combined_mask, name=ROI_total_string, approximate_contours=False)
 
@@ -110,6 +114,7 @@ class TestROIHandler(unittest.TestCase):
                     print(f"volume {ROI_total_string} {structure["volume"]["value"]}")
                     break
 
+    # This test check if the determined values of PTV-Vessels is close to the actual values
     def test_values_ptv_vessels(self):
         dvh_calculations_list = Config("dvh-calculations").config
         dict_DVH_ROI = next((item[YAML_PTV_VESSELS] for item in dvh_calculations_list if "TestPTV_P-Vessels_P" in item), None)
