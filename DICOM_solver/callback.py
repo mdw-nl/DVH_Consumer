@@ -7,6 +7,7 @@ import traceback
 import os
 from .dicom_process import dicom_object
 from .DVH.output import return_output
+from .DVH.dicom_bundle import DicomBundle
 
 
 def connect_db():
@@ -122,12 +123,10 @@ def execute_dvh(list_do):
         logging.info(f"RTdose path :{p.rt_dose[0]}")
         logging.info(f"RTstruct path :{p.rt_struct[0]}")
         logging.info(f"RTplan path :{p.rt_plan[0]}")
-        dvh_c.get_RT_Dose(p.rt_dose[0])
-        dvh_c.get_RT_Plan(p.rt_plan[0])
-        dvh_c.get_RT_Struct(p.rt_struct[0])
-        dvh_c.get_structures()
-        dvh_c.calculate_dvh_all()
-        return_output(p.p_id, dvh_c.output)
+        structures = p.rt_struct[0].GetStructures()
+        dicom_bundle = DicomBundle(p.rt_plan[0], p.rt_struct[0], p.rt_dose[0], p.ct[0])
+        output = dvh_c.calculate_dvh_all(dicom_bundle, structures)
+        return_output(p.p_id, output)
         logging.info(f"Calculation complete for {p.p_id}")
 
 

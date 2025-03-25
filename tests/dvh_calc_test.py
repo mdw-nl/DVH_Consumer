@@ -12,6 +12,7 @@ from DICOM_solver.DVH.dvh import DVH_calculation
 from DICOM_solver.config_handler import Config
 from dicompylercore import dicomparser
 from DICOM_solver.roi_lookup_service import RoiLookupService
+from DICOM_solver.DVH.dicom_bundle import DicomBundle
 
 ZIP_PATH = 'dicomtestdata.zip'
 DICOM_DATA_PATH = 'dicomdata'
@@ -76,6 +77,7 @@ class TestROIHandler(unittest.TestCase):
                 if i%2 == 0:
                     operations_list.append(parts)
                 else:
+                    print(standarized_name_dict)
                     ROI_list.append(standarized_name_dict[parts])
             
             # Add the new ROI to the rtstruct
@@ -92,27 +94,19 @@ class TestROIHandler(unittest.TestCase):
             file_path_RTdose = os.path.join("dicomdata", "RD.PYTIM05_.dcm")
             file_path_RTplan = os.path.join("dicomdata", "RP.PYTIM05_PS2.dcm")
             
-            dvh_c = DVH_calculation()
-            dvh_c.get_RT_Dose(file_path_RTdose)
-            dvh_c.get_RT_Plan(file_path_RTplan)
-            dvh_c.get_RT_Struct(self.rtstruct.ds)
-            dvh_c.get_structures()
-
             dose_data = dicomparser.DicomParser(file_path_RTdose)
             rt_plan = dicomparser.DicomParser(file_path_RTplan)
 
-            output = dvh_c.get_dvh_v(rt_struct,
+            dvh_c = DVH_calculation()
+            result = dvh_c.get_dvh_v(rt_struct,
                     dose_data,
                     roiNumber,
                     rt_plan)
-            dvh_c.process_dvh_result(output, roiNumber)
-            
-            # Iterate over the output list to access the mean values
-            for structure in dvh_c.output:
-                if structure["structureName"] == ROI_total_string:
-                    print(f"mean {ROI_total_string} {structure["mean"]["value"]}")
-                    print(f"volume {ROI_total_string} {structure["volume"]["value"]}")
-                    break
+            output = dvh_c.process_dvh_result(result, roiNumber, rt_struct.GetStructures())
+
+            print(f"mean {ROI_total_string} {output["mean"]["value"]}")
+            print(f"volume {ROI_total_string} {output["volume"]["value"]}")
+            break
 
     # This test check if the determined values of PTV-Vessels is close to the actual values
     def test_values_ptv_vessels(self):
@@ -138,32 +132,25 @@ class TestROIHandler(unittest.TestCase):
                 roiNumber = structure_roi.ROINumber
                 break
                     
-        rt_struct = dicomparser.DicomParser(self.rtstruct.ds)
 
         file_path_RTdose = os.path.join("dicomdata", "RD.PYTIM05_.dcm")
         file_path_RTplan = os.path.join("dicomdata", "RP.PYTIM05_PS2.dcm")
         
-        dvh_c = DVH_calculation()
-        dvh_c.get_RT_Dose(file_path_RTdose)
-        dvh_c.get_RT_Plan(file_path_RTplan)
-        dvh_c.get_RT_Struct(self.rtstruct.ds)
-        dvh_c.get_structures()
+        
 
+        rt_struct = dicomparser.DicomParser(self.rtstruct.ds)
         dose_data = dicomparser.DicomParser(file_path_RTdose)
         rt_plan = dicomparser.DicomParser(file_path_RTplan)
 
-        output = dvh_c.get_dvh_v(rt_struct,
+        dvh_c = DVH_calculation()
+        result = dvh_c.get_dvh_v(rt_struct,
                   dose_data,
                   roiNumber,
                   rt_plan)
-        dvh_c.process_dvh_result(output, roiNumber)
+        output = dvh_c.process_dvh_result(result, roiNumber, rt_struct.GetStructures())
 
-        # Iterate over the output list to access the mean values
-        for structure in dvh_c.output:
-            if structure["structureName"] == PTV_VESSELS:
-                mean = structure["mean"]["value"]
-                volume = structure["volume"]["value"]
-                break
+        mean = output["mean"]["value"]
+        volume = output["volume"]["value"]
         
         real_volume = 48.4625
         real_mean_dose = 4.47565
