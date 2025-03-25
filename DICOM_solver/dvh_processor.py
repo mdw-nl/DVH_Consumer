@@ -4,11 +4,44 @@ from .DVH.dvh import DVH_calculation
 import logging
 import pandas as pd
 import traceback
-import os
-from .dicom_process import dicom_object
 from .DVH.output import return_output
 from .DVH.dicom_bundle import DicomBundle
+from dicompylercore.dicomparser import DicomParser
 
+
+def create_dvh_calculation_thread(ch, method, properties, body, executor):
+    study_uid = body.decode()
+    try:
+        future = executor.submit(process_message, study_uid)  # Run processing in a separate thread
+        result = future.result()  # Wait for the thread to complete
+        logging.info("Finish")
+
+        ch.basic_ack(delivery_tag=method.delivery_tag)  # ACK if successful
+
+    except Exception as e:
+        print(f"Error processing message: {e}")
+        ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
+
+def process_message(study_uid):
+    try:
+        db = connect_db()
+
+        if study_uid is None:
+            raise Exception(f"Study uid is : {study_uid}")
+        logging.info(f"The study uid is :{study_uid}")
+        result = get_all_uid(db, study_uid)
+
+        verified = verify_full(result)
+        if verified:
+            logging.info(f"result is :{result}")
+            dicom_bundles = collect_patients_dicom(result)
+            calculate_dvh_curves(dicom_bundles)
+
+    except Exception as e:
+        logging.warning(f"Exception Type: {type(e).__name__}")
+        logging.warning(f"Exception Message: {e}")
+        logging.warning("Error something wrong")
+        logging.warning(traceback.format_exc())
 
 def connect_db():
     postgres_config = Config("postgres")
@@ -59,26 +92,26 @@ def verify_full(df: pd.DataFrame):
     if len(list_patient) > 1:
         logging.info(f"More than one patients in the database {n_patients}")
         result = any(
-            check_if_all_in(list(set(df.loc[df["patient_id"] == p_id]["modality"].values.tolist())))
-            for p_id in list_patient
+            check_if_all_in(list(set(df.loc[df["patient_id"] == patient_id]["modality"].values.tolist())))
+            for patient_id in list_patient
         )
     elif len(list_patient) == 1:
         logging.info("Only one patient")
-        p_id = list_patient[0]
+        patient_id = list_patient[0]
         result = check_if_all_in(
-            list(set(df.loc[df["patient_id"] == p_id]["modality"].values.tolist()))
+            list(set(df.loc[df["patient_id"] == patient_id]["modality"].values.tolist()))
         )
     logging.debug(f"All dicom component received ? {result}")
 
     return result
 
 
-def link_rt_plan_dose(df, rt_plan_uid_list,p_id, ct, rt_struct):
+def link_rt_plan_dose(df, rt_plan_uid_list,patient_id, ct, rt_struct):
     """
 
     :param df:
     :param rt_plan_uid_list:
-    :param p_id:
+    :param patient_id:
     :param ct:
     :param rt_struct:
     :return:
@@ -91,10 +124,12 @@ def link_rt_plan_dose(df, rt_plan_uid_list,p_id, ct, rt_struct):
         rt_plan = df.loc[(df["sop_instance_uid"] == k) & (df["modality"] == "RTPLAN")][
             "file_path"].values.tolist()
         logging.info(f"RT dose and plan :{rt_dose}, {rt_plan}")
-        do = dicom_object(p_id, ct, rt_plan, rt_dose, rt_struct)
-        list_do.append(do)
-    return list_do
 
+
+        dicom_bundle = DicomBundle(patient_id, DicomParser(ct), DicomParser(rt_plan),
+                                   DicomParser(rt_dose), DicomParser(rt_struct))
+        list_do.append(dicom_bundle)
+    return list_do
 
 def collect_patients_dicom(df: pd.DataFrame):
     """
@@ -104,63 +139,26 @@ def collect_patients_dicom(df: pd.DataFrame):
     """
     list_patient = list(set(df["patient_id"].values.tolist()))
     result_list = []
-    for p_id in list_patient:
-        df_o_p: pd.DataFrame = df.loc[df["patient_id"] == p_id]
+    for patient_id in list_patient:
+        df_o_p: pd.DataFrame = df.loc[df["patient_id"] == patient_id]
         ref_rt_plan_uid_list = df_o_p["referenced_rt_plan_uid"].values.tolist()
         rt_struct = df_o_p.loc[df["modality"] == "RTSTRUCT"]["file_path"].values.tolist()
         ct = df_o_p.loc[df["modality"] == "CT"]["file_path"].values.tolist()
         ref_rt_plan_uid_list = [uid for uid in ref_rt_plan_uid_list if uid != "UNKNOWN"]
-        list_do = link_rt_plan_dose(df_o_p,ref_rt_plan_uid_list,p_id, ct, rt_struct)
-        result_list.extend(list_do)
+        dicom_bundles = link_rt_plan_dose(df_o_p,ref_rt_plan_uid_list,patient_id, ct, rt_struct)
+        result_list.extend(dicom_bundles)
 
     return result_list
 
 
-def execute_dvh(list_do):
-    logging.warning(f"Patients to analyze:{len(list_do)} ")
-    for p in list_do:
+def calculate_dvh_curves(dicom_bundles):
+    logging.warning(f"Patients to analyze:{len(dicom_bundles)} ")
+    for dicom_bundle in dicom_bundles:
         dvh_c = DVH_calculation()
-        logging.info(f"RTdose path :{p.rt_dose[0]}")
-        logging.info(f"RTstruct path :{p.rt_struct[0]}")
-        logging.info(f"RTplan path :{p.rt_plan[0]}")
-        structures = p.rt_struct[0].GetStructures()
-        dicom_bundle = DicomBundle(p.rt_plan[0], p.rt_struct[0], p.rt_dose[0], p.ct[0])
+        logging.info(f"RTdose path :{dicom_bundle.rt_dose[0]}")
+        logging.info(f"RTstruct path :{dicom_bundle.rt_struct[0]}")
+        logging.info(f"RTplan path :{dicom_bundle.rt_plan[0]}")
+        structures = dicom_bundle.rt_struct[0].GetStructures()
         output = dvh_c.calculate_dvh_all(dicom_bundle, structures)
-        return_output(p.p_id, output)
-        logging.info(f"Calculation complete for {p.p_id}")
-
-
-def process_message(study_uid):
-    try:
-        db = connect_db()
-
-        if study_uid is None:
-            raise Exception(f"Study uid is : {study_uid}")
-        logging.info(f"The study uid is :{study_uid}")
-        result = get_all_uid(db, study_uid)
-
-        verified = verify_full(result)
-        if verified:
-            logging.info(f"result is :{result}")
-            list_do = collect_patients_dicom(result)
-            execute_dvh(list_do)
-
-    except Exception as e:
-        logging.warning(f"Exception Type: {type(e).__name__}")
-        logging.warning(f"Exception Message: {e}")
-        logging.warning("Error something wrong")
-        logging.warning(traceback.format_exc())
-
-
-def callback(ch, method, properties, body, executor):
-    study_uid = body.decode()
-    try:
-        future = executor.submit(process_message, study_uid)  # Run processing in a separate thread
-        result = future.result()  # Wait for the thread to complete
-        logging.info("Finish")
-
-        ch.basic_ack(delivery_tag=method.delivery_tag)  # ACK if successful
-
-    except Exception as e:
-        print(f"Error processing message: {e}")
-        ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
+        return_output(dicom_bundle.patient_id, output)
+        logging.info(f"Calculation complete for {dicom_bundle.patient_id}")
