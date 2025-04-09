@@ -19,6 +19,8 @@ class Config:
         logging.info(f"Config data : {self.config}")
 
 class RoiConfig:
+    rois = {}
+
     def __init__(self):
         with open('roi_name_mappings.yaml', 'r') as file:
             roiNameObject = yaml.safe_load(file)
