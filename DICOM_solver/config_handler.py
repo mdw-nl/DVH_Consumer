@@ -17,3 +17,11 @@ class Config:
     def read_config_section(self, file, sect):
         self.config = file.get(sect, {})
         logging.info(f"Config data : {self.config}")
+
+class RoiConfig:
+    def __init__(self):
+        with open('roi_name_mappings.yaml', 'r') as file:
+            roiNameObject = yaml.safe_load(file)
+            for standardName, synonymList in roiNameObject.items():
+                for synonym in synonymList:
+                    self.rois[synonym] = standardName

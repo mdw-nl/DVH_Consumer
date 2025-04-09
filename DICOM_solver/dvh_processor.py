@@ -7,6 +7,7 @@ import traceback
 from .DVH.output import return_output
 from .DVH.dicom_bundle import DicomBundle
 from dicompylercore.dicomparser import DicomParser
+import DICOM_solver.roi_lookup_service as roi_lookup_sevice
 
 
 def create_dvh_calculation_thread(ch, method, properties, body, executor):
@@ -35,7 +36,9 @@ def process_message(study_uid):
         if verified:
             logging.info(f"result is :{result}")
             dicom_bundles = collect_patients_dicom(result)
-            calculate_dvh_curves(dicom_bundles)
+            for dicom_bundle in dicom_bundles:
+                logging.info(f"Patients to analyze:{len(dicom_bundles)} ")
+                calculate_dvh_curves(dicom_bundle)
 
     except Exception as e:
         logging.warning(f"Exception Type: {type(e).__name__}")
@@ -150,15 +153,44 @@ def collect_patients_dicom(df: pd.DataFrame):
 
     return result_list
 
+def add_combined_structures(rt_struct):
+    """
 
-def calculate_dvh_curves(dicom_bundles):
-    logging.warning(f"Patients to analyze:{len(dicom_bundles)} ")
-    for dicom_bundle in dicom_bundles:
-        dvh_c = DVH_calculation()
-        logging.info(f"RTdose path :{dicom_bundle.rt_dose[0]}")
-        logging.info(f"RTstruct path :{dicom_bundle.rt_struct[0]}")
-        logging.info(f"RTplan path :{dicom_bundle.rt_plan[0]}")
-        structures = dicom_bundle.rt_struct[0].GetStructures()
-        output = dvh_c.calculate_dvh_all(dicom_bundle, structures)
-        return_output(dicom_bundle.patient_id, output)
-        logging.info(f"Calculation complete for {dicom_bundle.patient_id}")
+    :param rt_struct:
+    :return:
+    """
+    roi_lookup_sevice = roi_lookup_sevice()
+    dvh_c = DVH_calculation()
+    roi_lookup_sevice = roi_lookup_sevice()
+    standarized_name_dict = roi_lookup_sevice.get_standarized_names(rt_struct)
+    dvh_c = DVH_calculation()
+    dvh_calculations_list = Config("dvh-calculations").config
+    for item in dvh_calculations_list:
+        for key, value in item.items():
+            roi_string = value["roi"]
+
+        string_parts = re.split(r'\s+', roi_string)
+
+        ROI_total_string = ""
+        operations_list = []
+        ROI_list = []
+        for i, parts in enumerate(string_parts, start=1):
+            ROI_total_string = ROI_total_string + parts
+            if i % 2 == 0:
+                operations_list.append(parts)
+            else:
+                ROI_list.append(standarized_name_dict[parts])
+
+        combined_mask = roi_handler.combine_rois(rt_struct, ROI_list, operations_list)
+        rt_struct.add_roi(mask=combined_mask, name=ROI_total_string, approximate_contours=False)
+        return rt_struct
+
+def calculate_dvh_curves(dicom_bundle):
+    dvh_c = DVH_calculation()
+    logging.info(f"RTdose path :{dicom_bundle.rt_dose[0]}")
+    logging.info(f"RTstruct path :{dicom_bundle.rt_struct[0]}")
+    logging.info(f"RTplan path :{dicom_bundle.rt_plan[0]}")
+    structures = dicom_bundle.rt_struct[0].GetStructures()
+    output = dvh_c.calculate_dvh_all(dicom_bundle, structures)
+    return_output(dicom_bundle.patient_id, output)
+    logging.info(f"Calculation complete for {dicom_bundle.patient_id}")

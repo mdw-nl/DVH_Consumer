@@ -11,8 +11,7 @@ import DICOM_solver.roi_handler as roi_handler
 from DICOM_solver.DVH.dvh import DVH_calculation
 from DICOM_solver.config_handler import Config
 from dicompylercore import dicomparser
-from DICOM_solver.roi_lookup_service import RoiLookupService
-from DICOM_solver.DVH.dicom_bundle import DicomBundle
+import DICOM_solver.roi_lookup_service as roi_lookup_sevice
 
 ZIP_PATH = 'dicomtestdata.zip'
 DICOM_DATA_PATH = 'dicomdata'
@@ -44,22 +43,10 @@ class TestROIHandler(unittest.TestCase):
         rtstruct_path = os.path.join(DICOM_DATA_PATH, RTSTRUCT_FILENAME)
         dicom_series_path = os.path.join(DICOM_DATA_PATH)
         self.rtstruct = RTStructBuilder.create_from(dicom_series_path, rtstruct_path)
-    
-    def standarized_name_dict(self):
-        roi_lookup_service = RoiLookupService()
-        rtstruct_roi = self.rtstruct.get_roi_names()
-        
-        standardized_name_dict = {}
-        for roi in rtstruct_roi:
-            standardized_name = roi_lookup_service.get_standardized_name(roi)
-            standardized_name_dict[standardized_name] = roi
-            
-        return standardized_name_dict
 
     def test_calc_d_mean(self):
-        # Get the dvh-calculations from the config file and get the dict for the standarized names
         dvh_calculations_list = Config("dvh-calculations").config
-        standarized_name_dict = self.standarized_name_dict()
+        standarized_name_dict = roi_lookup_sevice.get_standarized_names(self.rtstruct)
         
         # Loop over all the items in the config file
         for item in dvh_calculations_list:
