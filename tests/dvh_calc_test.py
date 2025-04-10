@@ -29,9 +29,6 @@ OPERATION_ADDITION = "+"
 OPERATION_SUBTRACTION = "-"
 YAML_PTV_VESSELS = "TestPTV_P-Vessels_P"
 
-# Haal de config labels uit de yaml file, doe de addit/substration met de handler, bereken de DVH en dan .mean/.volume
-# Vul de yaml file aan
-
 class TestROIHandler(unittest.TestCase):
     rtstruct = None
 

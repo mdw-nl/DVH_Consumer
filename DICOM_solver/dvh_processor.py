@@ -8,16 +8,17 @@ from .DVH.output import return_output
 from .DVH.dicom_bundle import DicomBundle
 from dicompylercore.dicomparser import DicomParser
 import DICOM_solver.roi_lookup_service as roi_lookup_sevice
-
+import DICOM_solver.roi_handler as roi_handler
+import re
 
 def create_dvh_calculation_thread(ch, method, properties, body, executor):
     study_uid = body.decode()
     try:
-        future = executor.submit(process_message, study_uid)  # Run processing in a separate thread
-        result = future.result()  # Wait for the thread to complete
+        future = executor.submit(process_message, study_uid)
+        result = future.result()
         logging.info("Finish")
 
-        ch.basic_ack(delivery_tag=method.delivery_tag)  # ACK if successful
+        ch.basic_ack(delivery_tag=method.delivery_tag)
 
     except Exception as e:
         print(f"Error processing message: {e}")
@@ -159,8 +160,6 @@ def add_combined_structures(rt_struct):
     :param rt_struct:
     :return:
     """
-    roi_lookup_sevice = roi_lookup_sevice()
-    dvh_c = DVH_calculation()
     roi_lookup_sevice = roi_lookup_sevice()
     standarized_name_dict = roi_lookup_sevice.get_standarized_names(rt_struct)
     dvh_c = DVH_calculation()
