@@ -1,0 +1,61 @@
+
+rabbitMQ:
+  host: "host.docker.internal"
+  port: "5672"
+  username: "user"
+  password: "password"
+
+postgres:
+    host: "host.docker.internal"
+    port: "5432"
+    username: "postgres"
+    password: "postgres"
+    db: "postgres"
+
+roi-combinations:
+  -
+    P-LUNG:
+      roi: "Lung_L + Lung_R"
+  -
+    MeanDoseIpsiLateralParotidGland:
+      roi: "Parotid_Ipsilateral"
+  -
+    MeanDoseContraLateralParotidGland:
+      roi: "Parotid_Contralateral"
+      type: mean-dose
+  -
+    MeanDoseSubmandibularGlands:
+      roi: "Submandibular_L + Submandibular_R"
+      type: mean-dose
+  -
+    TestPTV_P-Vessels_P:
+      roi: "PTV_P - Vessels_P"
+      type: mean-dose
+  -
+    MeanDoseOralCavity:
+      roi: "OralCavity_Ext"
+      type: mean-dose
+  -
+    MeanDosePCMSuperior:
+      roi: "PCM_Sup"
+      type: mean-dose
+  -
+    MeanDosePCMMiddle:
+      roi: "PCM_Med"
+      type: mean-dose
+  -
+    MeanDosePCMInferior:
+      roi: "PCM_Inf"
+      type: mean-dose
+  -
+    MeanDoseLung:
+      roi: "Lung_L + Lung_R"
+  -
+    LogMeanEsophagealDose:
+      roi: "Esophagus"
+  -
+    SquareRootMeanDoseHeart:
+      roi: "Heart"
+  -
+    SquareRootGrossTumorVolume:
+      roi: "Tumor"

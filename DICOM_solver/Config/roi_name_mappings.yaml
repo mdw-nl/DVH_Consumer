@@ -1,0 +1,51 @@
+Lung_R:
+  - Lung-R
+  - Lung_R
+  - linkerlong
+  - LungR
+  - Lung R
+  - lung_right
+  -
+Lung_L:
+  - Lung-L
+  - Lung_L
+  - linkerlong
+  - LungL
+  - Lung L
+  - Lung_left
+  - lung_left
+#GTV-1:
+#  - GTV_1
+#  - GTVp1
+#  - GTV1
+#  - GTV-1
+#Spinal_Canal_P:
+#  - Spinal Canal_P
+#  - Spinal Canal
+#  - Spinal Canal_P
+#Parotid_Ipsilateral:
+#  - Parotid_Ipsilateral
+#Parotid_Contralateral:
+#  - Parotid_Contralateral
+#Submandibular_L:
+#  - Submandibular_L
+#Submandibular_R:
+#  - Submandibular_R
+#PTV_P:
+#  - PTV_P
+#Vessels_P:
+#  - Vessels_P
+#OralCavity_Ext:
+#  - OralCavity_Ext
+#PCM_Sup:
+#  - PCM_Sup
+#PCM_Med:
+#  - PCM_Med
+#PCM_Inf:
+#  - PCM_Inf
+#Esophagus:
+#  - Esophagus
+#Heart:
+#  - Heart
+#Tumor:
+#  - Tumor

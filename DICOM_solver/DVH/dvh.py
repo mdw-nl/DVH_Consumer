@@ -3,7 +3,7 @@ from uuid import uuid4
 import numpy as np
 import logging
 import traceback
-
+from .dicom_bundle import DicomBundle
 
 
 def prepare_output(dvh_points, structure, calc_dvh, dict_value):
@@ -45,30 +45,7 @@ class DVH_calculation:
     Tested only on GraphDB
     """
 
-    def __init__(self):
-        """
-        :param file_path:
-        :param urls:
-        """
-        self.RT_plan = None
-        self.RT_struct = None
-        self.RT_dose = None
-        self.output = []
-        self.structures = None
-
-    def get_RT_Struct(self, file_path):
-        self.RT_struct = dicomparser.DicomParser(file_path)
-
-    def get_RT_Plan(self, file_path):
-        self.RT_plan = dicomparser.DicomParser(file_path)
-
-    def get_RT_Dose(self, file_path):
-        self.RT_dose = dicomparser.DicomParser(file_path)
-
-    def get_structures(self):
-        self.structures = self.RT_struct.GetStructures()
-
-    def process_dvh_result(self, calculation_r, index):
+    def process_dvh_result(self, calculation_r, index, structures):
         dvh_d = calculation_r.bincenters.tolist()
         dvh_v = calculation_r.counts.tolist()
         dvh_points = []
@@ -88,41 +65,50 @@ class DVH_calculation:
                 logging.error(e)
                 dict_values[key] = None
 
-        structOut = prepare_output(dvh_points, self.structures[index], calculation_r, dict_values)
+        structOut = prepare_output(dvh_points, structures[index], calculation_r, dict_values)
         n_s = structOut["structureName"]
         logging.info(f"Structure: {n_s}")
-        self.output.append(structOut)
+        return structOut
 
-    def calculate_dvh_all(self):
-        for index in self.structures:
-            logging.warning("Calculating structures " + str(self.structures[index]))
+    def calculate_dvh_all(self, dicom_bundle: DicomBundle, structures):
+        output = []
 
-            try:
-                # calc_dvh = self.get_dvh_v(self.RT_struct, self.RT_dose, index, self.RT_plan)
-                calc_dvh = self.calculate_dvh(index)
-            except Exception as except_t:
-                logging.warning(except_t)
-                logging.warning("Error something wrong")
-                logging.warning(traceback.format_exc())
-                logging.warning("Skipping...")
+        if len(structures) > 0:
+            for index in structures:
+                logging.warning("Calculating structures " + str(structures[index]))
 
-                continue
+                try:
+                    calc_dvh = self.calculate_dvh(index, dicom_bundle)
+                except Exception as except_t:
+                    logging.warning(except_t)
+                    logging.warning("Error something wrong")
+                    logging.warning(traceback.format_exc())
+                    logging.warning("Skipping...")
 
-            try:
-                self.process_dvh_result(calc_dvh, index)
-            except Exception as e:
-                logging.info("error")
-                logging.warning(e)
-                logging.warning(traceback.format_exc())
-                continue
+                    continue
 
-    def calculate_dvh(self, index):
+                try:
+                    logging.info("DVh calculation complete. Processing output...")
+                    result = self.process_dvh_result(calc_dvh, index, structures)
+                    output.append(result)
+                except Exception as e:
+                    logging.info("error")
+                    logging.warning(e)
+                    logging.warning(traceback.format_exc())
+                    continue
+        else:
+            logging.info("NO structures")
+        return output
+
+    def calculate_dvh(self, index, dicom_bundle: DicomBundle):
         """
-
+        :param dicom_bundle:
         :param index:
         :return:
         """
-        calc_dvh = self.get_dvh_v(structure=self.RT_struct, dose_data=self.RT_dose, roi=index, rt_plan_p=self.RT_plan)
+        # TODO check if multiple rt dose are in the dicom bundle. Also we need to add dose summation
+        calc_dvh = self.get_dvh_v(structure=dicom_bundle.rt_struct, dose_data=dicom_bundle.rt_dose[0], roi=index,
+                                  rt_plan_p=dicom_bundle.rt_plan)
 
         return calc_dvh
 

@@ -28,7 +28,6 @@ def return_output(patient_id, calculatedDose):
 
     :return:
     """
-
     uuid_for_calculation = uuid4()
     gdb = Config("GraphDB")
     config_dict_gdb = gdb.config
@@ -36,7 +35,7 @@ def return_output(patient_id, calculatedDose):
     port = config_dict_gdb["port"]
     repo = config_dict_gdb["repo"]
     graphdb_url = f"http://{host}:{port}/repositories/{repo}/statements"
-
+    logging.info(calculatedDose)
     for j in calculatedDose:
         resultDict = {
             "@context": {

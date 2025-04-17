@@ -18,4 +18,15 @@ GraphDB:
     repo: "protrait"
 
 
+GraphDB:
+    host: "host.docker.internal"
+    port: "7200"
+    repo: "protrait"
 
+dvh-calculations:
+  -
+    P-LUNG:
+      roi: "Lung_L + Lung_R"
+  -
+    MeanDoseIpsiLateralParotidGland:
+      roi: "Parotid_Ipsilateral"

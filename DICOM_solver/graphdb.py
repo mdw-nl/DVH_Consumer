@@ -17,7 +17,7 @@ def upload_jsonld_to_graphdb(jsonld_data, graphdb_url):
     headers = {
         "Content-Type": "application/ld+json"
     }
-    #logging.info(f"DATA:{jsonld_data}")
+    logging.info(f"Uploading")
     try:
         # Sending POST request to the GraphDB REST API
         response = requests.post(graphdb_url, headers=headers, data=json.dumps(jsonld_data))
@@ -38,6 +38,7 @@ def upload_jsonld_to_graphdb(jsonld_data, graphdb_url):
         logging.warning(f"Exception Message: {e}")
         logging.warning("Error something wrong")
         logging.warning(traceback.format_exc())
+        raise e
 
 
 """if __name__ == "__main__":
