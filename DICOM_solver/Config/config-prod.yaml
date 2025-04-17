@@ -13,10 +13,13 @@ postgres:
     db: "postgres"
 
 roi-combinations:
-  - 
+  -
+    P-LUNG:
+      roi: "Lung_L + Lung_R"
+  -
     MeanDoseIpsiLateralParotidGland:
       roi: "Parotid_Ipsilateral"
-  - 
+  -
     MeanDoseContraLateralParotidGland:
       roi: "Parotid_Contralateral"
       type: mean-dose

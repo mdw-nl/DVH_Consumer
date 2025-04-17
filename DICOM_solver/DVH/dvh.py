@@ -6,7 +6,6 @@ import traceback
 from .dicom_bundle import DicomBundle
 
 
-
 def prepare_output(dvh_points, structure, calc_dvh, dict_value):
     id_data = "http://data.local/ldcm-rt/" + str(uuid4())
     structOut = {
@@ -71,41 +70,48 @@ class DVH_calculation:
         logging.info(f"Structure: {n_s}")
         return structOut
 
-    def calculate_dvh_all(self, dicom_bundle:DicomBundle, structures):
+    def calculate_dvh_all(self, dicom_bundle: DicomBundle, structures):
         output = []
-        for index in structures:
-            logging.warning("Calculating structures " + str(structures[index]))
 
-            try:
-                calc_dvh = self.calculate_dvh(index, dicom_bundle)
-            except Exception as except_t:
-                logging.warning(except_t)
-                logging.warning("Error something wrong")
-                logging.warning(traceback.format_exc())
-                logging.warning("Skipping...")
+        if len(structures) > 0:
+            for index in structures:
+                logging.warning("Calculating structures " + str(structures[index]))
 
-                continue
+                try:
+                    calc_dvh = self.calculate_dvh(index, dicom_bundle)
+                except Exception as except_t:
+                    logging.warning(except_t)
+                    logging.warning("Error something wrong")
+                    logging.warning(traceback.format_exc())
+                    logging.warning("Skipping...")
 
-            try:
-                result = self.process_dvh_result(calc_dvh, index, structures)
-                output.append(result)
-            except Exception as e:
-                logging.info("error")
-                logging.warning(e)
-                logging.warning(traceback.format_exc())
-                continue
+                    continue
+
+                try:
+                    logging.info("DVh calculation complete. Processing output...")
+                    result = self.process_dvh_result(calc_dvh, index, structures)
+                    output.append(result)
+                except Exception as e:
+                    logging.info("error")
+                    logging.warning(e)
+                    logging.warning(traceback.format_exc())
+                    continue
+        else:
+            logging.info("NO structures")
         return output
 
-    def calculate_dvh(self, index, dicom_bundle:DicomBundle):
+    def calculate_dvh(self, index, dicom_bundle: DicomBundle):
         """
-
+        :param dicom_bundle:
         :param index:
         :return:
         """
-        calc_dvh = self.get_dvh_v(structure=dicom_bundle.rt_struct, dose_data=dicom_bundle.rt_dose, roi=index, rt_plan_p=dicom_bundle.rt_plan)
+        # TODO check if multiple rt dose are in the dicom bundle. Also we need to add dose summation
+        calc_dvh = self.get_dvh_v(structure=dicom_bundle.rt_struct, dose_data=dicom_bundle.rt_dose[0], roi=index,
+                                  rt_plan_p=dicom_bundle.rt_plan)
 
         return calc_dvh
-    
+
     def get_dvh_v(self, structure,
                   dose_data,
                   roi,

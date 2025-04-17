@@ -5,9 +5,8 @@ from .Config.global_var import NUMBER_ATTEMPTS, RETRY_DELAY_IN_SECONDS
 from time import sleep
 
 
-
 class PostgresInterface:
-    def __init__(self, host, database, user, password,port):
+    def __init__(self, host, database, user, password, port):
         self.host = host
         self.database = database
         self.user = user
@@ -15,7 +14,6 @@ class PostgresInterface:
         self.conn = None
         self.cursor = None
         self.port = port
-
 
     def connect(self):
         """Connect to the PostgreSQL database."""
@@ -115,5 +113,3 @@ class PostgresInterface:
         """
         self.cursor.execute(query, (table_name,))
         return self.cursor.fetchone()[0]
-
-

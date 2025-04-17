@@ -18,11 +18,12 @@ class Config:
         self.config = file.get(sect, {})
         logging.info(f"Config data : {self.config}")
 
+
 class RoiConfig:
     rois = {}
 
-    def __init__(self):
-        with open('roi_name_mappings.yaml', 'r') as file:
+    def __init__(self): #roi_name_mappings.yaml
+        with open('DICOM_solver/Config/roi_name_mappings.yaml', 'r') as file:
             roiNameObject = yaml.safe_load(file)
             for standardName, synonymList in roiNameObject.items():
                 for synonym in synonymList:

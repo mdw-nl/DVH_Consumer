@@ -12,9 +12,15 @@ postgres:
     password: "postgres"
     db: "postgres"
 
+GraphDB:
+    host: "host.docker.internal"
+    port: "7200"
+    repo: "protrait"
+
 dvh-calculations:
   -
-    TestPTV_P-Vessels_P:
-      roi: "PTV_P - Vessels_P"
-      type: mean-dose
- 
+    P-LUNG:
+      roi: "Lung_L + Lung_R"
+  -
+    MeanDoseIpsiLateralParotidGland:
+      roi: "Parotid_Ipsilateral"

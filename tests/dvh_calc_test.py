@@ -29,6 +29,7 @@ OPERATION_ADDITION = "+"
 OPERATION_SUBTRACTION = "-"
 YAML_PTV_VESSELS = "TestPTV_P-Vessels_P"
 
+
 class TestROIHandler(unittest.TestCase):
     rtstruct = None
 
@@ -44,26 +45,26 @@ class TestROIHandler(unittest.TestCase):
     def test_calc_d_mean(self):
         dvh_calculations_list = Config("dvh-calculations").config
         standarized_name_dict = roi_lookup_sevice.get_standarized_names(self.rtstruct)
-        
+
         # Loop over all the items in the config file
         for item in dvh_calculations_list:
             for key, value in item.items():
                 roi_string = value["roi"]
 
             string_parts = re.split(r'\s+', roi_string)
-            
+
             # create two list for the operations and the ROIS with rtstruct names    
             ROI_total_string = ""
             operations_list = []
             ROI_list = []
             for i, parts in enumerate(string_parts, start=1):
                 ROI_total_string = ROI_total_string + parts
-                if i%2 == 0:
+                if i % 2 == 0:
                     operations_list.append(parts)
                 else:
                     print(standarized_name_dict)
                     ROI_list.append(standarized_name_dict[parts])
-            
+
             # Add the new ROI to the rtstruct
             combined_mask = roi_handler.combine_rois(self.rtstruct, ROI_list, operations_list)
             self.rtstruct.add_roi(mask=combined_mask, name=ROI_total_string, approximate_contours=False)
@@ -72,41 +73,42 @@ class TestROIHandler(unittest.TestCase):
             for structure_roi in self.rtstruct.ds.StructureSetROISequence:
                 if structure_roi.ROIName == ROI_total_string:
                     roiNumber = structure_roi.ROINumber
-                    break        
+                    break
             rt_struct = dicomparser.DicomParser(self.rtstruct.ds)
 
             file_path_RTdose = os.path.join("dicomdata", "RD.PYTIM05_.dcm")
             file_path_RTplan = os.path.join("dicomdata", "RP.PYTIM05_PS2.dcm")
-            
+
             dose_data = dicomparser.DicomParser(file_path_RTdose)
             rt_plan = dicomparser.DicomParser(file_path_RTplan)
 
             dvh_c = DVH_calculation()
             result = dvh_c.get_dvh_v(rt_struct,
-                    dose_data,
-                    roiNumber,
-                    rt_plan)
+                                     dose_data,
+                                     roiNumber,
+                                     rt_plan)
             output = dvh_c.process_dvh_result(result, roiNumber, rt_struct.GetStructures())
 
-            print(f"mean {ROI_total_string} {output["mean"]["value"]}")
-            print(f"volume {ROI_total_string} {output["volume"]["value"]}")
+            # print(f"mean {ROI_total_string} {output["mean"]["value"]}")
+            # print(f"volume {ROI_total_string} {output["volume"]["value"]}")
             break
 
     # This test check if the determined values of PTV-Vessels is close to the actual values
     def test_values_ptv_vessels(self):
         dvh_calculations_list = Config("dvh-calculations").config
-        dict_DVH_ROI = next((item[YAML_PTV_VESSELS] for item in dvh_calculations_list if "TestPTV_P-Vessels_P" in item), None)
+        dict_DVH_ROI = next((item[YAML_PTV_VESSELS] for item in dvh_calculations_list if "TestPTV_P-Vessels_P" in item),
+                            None)
         roi_string = dict_DVH_ROI["roi"]
         string_parts = re.split(r'\s+', roi_string)
-        
+
         operations_list = []
         ROI_list = []
         for i, parts in enumerate(string_parts, start=1):
-            if i%2 == 0:
+            if i % 2 == 0:
                 operations_list.append(parts)
             else:
                 ROI_list.append(parts)
-        
+
         combined_mask = roi_handler.combine_rois(self.rtstruct, ROI_list, operations_list)
         self.rtstruct.add_roi(mask=combined_mask, name=PTV_VESSELS, approximate_contours=False)
 
@@ -115,12 +117,9 @@ class TestROIHandler(unittest.TestCase):
             if structure_roi.ROIName == PTV_VESSELS:
                 roiNumber = structure_roi.ROINumber
                 break
-                    
 
         file_path_RTdose = os.path.join("dicomdata", "RD.PYTIM05_.dcm")
         file_path_RTplan = os.path.join("dicomdata", "RP.PYTIM05_PS2.dcm")
-        
-        
 
         rt_struct = dicomparser.DicomParser(self.rtstruct.ds)
         dose_data = dicomparser.DicomParser(file_path_RTdose)
@@ -128,21 +127,22 @@ class TestROIHandler(unittest.TestCase):
 
         dvh_c = DVH_calculation()
         result = dvh_c.get_dvh_v(rt_struct,
-                  dose_data,
-                  roiNumber,
-                  rt_plan)
+                                 dose_data,
+                                 roiNumber,
+                                 rt_plan)
         output = dvh_c.process_dvh_result(result, roiNumber, rt_struct.GetStructures())
 
         mean = output["mean"]["value"]
         volume = output["volume"]["value"]
-        
+
         real_volume = 48.4625
         real_mean_dose = 4.47565
-        
+
         test_list = []
         test_list.append(math.isclose(real_volume, volume, rel_tol=0.1))
         test_list.append(math.isclose(real_mean_dose, mean, rel_tol=0.1))
         self.assertTrue(np.all(test_list))
-        
+
+
 if __name__ == '__main__':
     unittest.main()
