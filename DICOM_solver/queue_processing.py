@@ -4,9 +4,6 @@ import concurrent.futures
 import time
 import threading
 
-RABBITMQ_URL = "amqp://user:password@host.docker.internal:5672/"
-QUEUE_NAME = "DICOM_Processor"
-
 
 class Consumer:
     def __init__(self, rmq_config):
@@ -46,7 +43,7 @@ class Consumer:
         self.connection_rmq.close()
 
     def start_consumer(self, callback):
-        self.channel.basic_consume(queue=QUEUE_NAME,
+        self.channel.basic_consume(queue=self.config_dict_rmq["queue_name"],
                                    on_message_callback=lambda ch, method, properties, body: callback(ch, method,
                                                                                                      properties, body,
                                                                                                      self.executor),

@@ -4,6 +4,7 @@ rabbitMQ:
   port: "5672"
   username: "user"
   password: "password"
+  queue_name: "DICOM_Processor"
 
 postgres:
     host: "host.docker.internal"
@@ -11,6 +12,11 @@ postgres:
     username: "postgres"
     password: "postgres"
     db: "postgres"
+GraphDB:
+    host: "host.docker.internal"
+    port: "7200"
+    repo: "protrait"
+
 
 GraphDB:
     host: "host.docker.internal"
