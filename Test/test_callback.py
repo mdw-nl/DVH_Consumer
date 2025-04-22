@@ -1,7 +1,7 @@
 import unittest
 from test_data import generate_df_sample
-from DICOM_solver.callback import verify_full, collect_patients_dicom
-from DICOM_solver.dicom_process import dicom_object
+from DICOM_solver.dvh_processor import verify_full, collect_patients_dicom
+
 
 
 class TestCallback(unittest.TestCase):
