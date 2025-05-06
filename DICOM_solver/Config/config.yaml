@@ -12,16 +12,12 @@ postgres:
     username: "postgres"
     password: "postgres"
     db: "postgres"
-GraphDB:
-    host: "host.docker.internal"
-    port: "7200"
-    repo: "protrait"
-
 
 GraphDB:
     host: "host.docker.internal"
     port: "7200"
     repo: "protrait"
+
 
 dvh-calculations:
   -

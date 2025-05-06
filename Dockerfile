@@ -7,10 +7,13 @@ COPY main.py main.py
 COPY requirements.txt requirements.txt
 
 ENV PYTHONPATH "${PYTHONPATH}:/DICOM_solver"
-ENV GRAPHDB_URL="http://host.docker.internal:7200/repositories/protrait/statements"
+#ENV GRAPHDB_URL="http://host.docker.internal:7200/repositories/protrait/statements"
 
 RUN pip install --no-cache-dir -r requirements.txt
 # Required for rtutils
-RUN apt-get update && apt-get install ffmpeg libsm6 libxext6  -y 
+RUN apt-get update && apt-get install -y \
+    libgl1 \
+    libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
 
 CMD ["python", "main.py"]
