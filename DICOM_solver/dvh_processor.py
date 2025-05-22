@@ -12,23 +12,53 @@ from DICOM_solver.roi_handler import roi_list, roi_operation, combine_rois, chec
 import re
 from rt_utils import RTStructBuilder
 from DICOM_solver.roi_handler import combine_rois
+from uuid import uuid4
+from .Config.global_var import INSERT_QUERY_DICOM_META
+from datetime import datetime
 
 
 def callback_tread(ch, method, properties, body, executor):
     study_uid = body.decode()
     try:
-        future = executor.submit(process_message, study_uid)
-        result = future.result()
-        logging.info("Finish")
-
         ch.basic_ack(delivery_tag=method.delivery_tag)
-
     except Exception as e:
-        print(f"Error processing message: {e}")
-        ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
+        logging.error(f'Error while ack the message, Exception Message: {e}')
+        logging.warning(f"Exception Type: {type(e).__name__}")
+        logging.warning(traceback.format_exc())
+        raise e
+    logging.info(f"Message processed with uid: {study_uid}")
+    db = connect_db()
+    try:
+
+        future = executor.submit(process_message, study_uid)
+        future.result()
+        logging.info("Process completed")
+
+        params = (
+            study_uid,
+            True,
+            datetime.now()
+        )
+        db.execute_query(INSERT_QUERY_DICOM_META, params)
+        db.disconnect()
+    except Exception as e:
+        logging.warning(f"Error during calculation, Exception Message: {e}")
+        logging.warning(f"Exception Type: {type(e).__name__}")
+        logging.warning(traceback.format_exc())
+        params = (
+            study_uid,
+            False,
+            datetime.now()
+        )
+        db.execute_query(INSERT_QUERY_DICOM_META, params)
+        raise e
 
 
 def process_message(study_uid):
+    """
+    The function use the study_uid to retrieve the data from the database.
+    Verify that for each patient we have all dicom required nad start the dvh calculation
+    """
     try:
         db = connect_db()
 
@@ -46,10 +76,10 @@ def process_message(study_uid):
                 logging.info(f"{dicom_bundles[0]}")
                 calculate_dvh_curves(dicom_bundle)
 
+        db.disconnect()
     except Exception as e:
         logging.warning(f"Exception Type: {type(e).__name__}")
         logging.warning(f"Exception Message: {e}")
-        logging.warning("Error something wrong")
         logging.warning(traceback.format_exc())
         raise e
 

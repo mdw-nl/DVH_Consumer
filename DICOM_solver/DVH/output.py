@@ -35,7 +35,7 @@ def return_output(patient_id, calculatedDose):
     port = config_dict_gdb["port"]
     repo = config_dict_gdb["repo"]
     graphdb_url = f"http://{host}:{port}/repositories/{repo}/statements"
-    logging.info(calculatedDose)
+
     for j in calculatedDose:
         resultDict = {
             "@context": {
@@ -138,5 +138,7 @@ def return_output(patient_id, calculatedDose):
             "containsStructureDose": [j]
         }
         upload_jsonld_to_graphdb(resultDict, graphdb_url=graphdb_url)
+
+
 
 

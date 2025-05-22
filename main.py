@@ -36,3 +36,6 @@ if __name__ == "__main__":
     cons = Consumer(rmq_config=rabbitMQ_config)
     cons.open_connection_rmq()
     cons.start_consumer(callback=callback_tread)
+
+
+

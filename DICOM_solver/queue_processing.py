@@ -30,11 +30,10 @@ class Consumer:
         """Send periodic heartbeats to keep the connection alive"""
         while not self.stop_heartbeat.is_set():
             try:
-                logging.info("Sending heartbeat..")
                 self.connection_rmq.process_data_events()
-                logging.info("Heartbeat sent.")
+                logging.debug("Heartbeat sent.")
             except Exception as e:
-                print(f"Heartbeat error: {e}")
+                logging.warning(f"Heartbeat error: {e}")
             time.sleep(10)
 
     def close_connection(self):
