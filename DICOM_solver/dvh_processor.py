@@ -74,8 +74,22 @@ def process_message(study_uid):
             for dicom_bundle in dicom_bundles:
                 logging.info(f"Patients to analyze:{len(dicom_bundles)} ")
                 logging.info(f"{dicom_bundles[0]}")
-                calculate_dvh_curves(dicom_bundle)
+                try:
+                    calculate_dvh_curves(dicom_bundle)
 
+                except Exception as e:
+                    logging.warning(f"Error during calculation, Exception Message: {e}")
+                    logging.warning(f"Exception Type: {type(e).__name__}")
+                    logging.warning(traceback.format_exc())
+                    raise e
+            try:
+                for dicom_bundle in dicom_bundles:
+                    dicom_bundle.rm_data_patient()
+            except Exception as e:
+                logging.warning(f"Error during delete of patient data, Exception Message: {e}")
+                logging.warning(f"Exception Type: {type(e).__name__}")
+                logging.warning(traceback.format_exc())
+                raise e
         db.disconnect()
     except Exception as e:
         logging.warning(f"Exception Type: {type(e).__name__}")
@@ -86,12 +100,16 @@ def process_message(study_uid):
 
 def connect_db():
     postgres_config = Config("postgres")
+    if postgres_config is None:
+        raise Exception("Postgres config is None")
 
     config_dict_db = postgres_config.config
     host, port, user, pwd, db = config_dict_db["host"], config_dict_db["port"], \
         config_dict_db["username"], config_dict_db["password"], config_dict_db["db"]
     db = PostgresInterface(host=host, database=db, user=user, password=pwd, port=port)
     db.connect()
+    logging.info("Connected to the database")
+
     return db
 
 
@@ -236,7 +254,7 @@ def calculate_dvh_curves(dicom_bundle):
     logging.info(f"RTdose :{dicom_bundle.rt_dose}")
     dicom_bundle = combine(dicom_bundle)
     structures = dicom_bundle.rt_struct.GetStructures()
-    logging.info(f"Structures :{structures}")
+
     output = dvh_c.calculate_dvh_all(dicom_bundle, structures)
     return_output(dicom_bundle.patient_id, output)
     logging.info(f"Calculation complete for {dicom_bundle.patient_id}")

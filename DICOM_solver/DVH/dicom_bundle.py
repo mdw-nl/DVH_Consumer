@@ -1,3 +1,5 @@
+import os
+
 from dicompylercore.dicomparser import DicomParser
 import logging
 
@@ -14,6 +16,7 @@ class DicomBundle:
             self.rt_plan: DicomParser = DicomParser(rt_plan)
             self.rt_struct: DicomParser = DicomParser(rt_struct)
             self.rt_dose: [] = [DicomParser(rt) for rt in rt_dose]
+            self.rt_dose_path: [] = rt_dose
         logging.info(f"Ct path is {self.rt_ct_path}")
 
     def __eq__(self, other):
@@ -25,3 +28,18 @@ class DicomBundle:
             return True
         else:
             return False
+
+    # function to delete all the elemnt using the path of each element
+    def rm_data_patient(self):
+        try:
+            os.remove(self.rt_plan_path)
+            os.remove(self.rt_struct_path)
+            for rt in self.rt_dose_path:
+                os.remove(rt)
+            for f in os.listdir(self.rt_ct_path):
+                os.remove(os.path.join(self.rt_ct_path, f))
+        except Exception as e:
+            logging.warning(f"Error deleting files: {e}")
+
+
+
