@@ -32,9 +32,13 @@ class DicomBundle:
     # function to delete all the elemnt using the path of each element
     def rm_data_patient(self):
         try:
+            logging.info(f"Removing data for patient {self.patient_id}")
             os.remove(self.rt_plan_path)
+            logging.info(f"Removing rt plan  {self.rt_plan_path}")
             os.remove(self.rt_struct_path)
+            logging.info(f"Removing data rt struct {self.rt_struct_path}")
             for rt in self.rt_dose_path:
+                logging.info(f"Removing data rt dose {self.rt_dose_path}")
                 os.remove(rt)
             for f in os.listdir(self.rt_ct_path):
                 os.remove(os.path.join(self.rt_ct_path, f))

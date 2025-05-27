@@ -4,6 +4,7 @@ import requests
 import json
 import traceback
 
+
 def upload_jsonld_to_graphdb(jsonld_data, graphdb_url):
     """
     Uploads a JSON-LD dictionary to a GraphDB repository via the REST API.
@@ -148,4 +149,3 @@ def upload_jsonld_to_graphdb(jsonld_data, graphdb_url):
 
 
 """
-

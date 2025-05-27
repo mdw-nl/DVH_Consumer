@@ -83,6 +83,7 @@ def process_message(study_uid):
                     logging.warning(traceback.format_exc())
                     raise e
             try:
+
                 for dicom_bundle in dicom_bundles:
                     dicom_bundle.rm_data_patient()
             except Exception as e:

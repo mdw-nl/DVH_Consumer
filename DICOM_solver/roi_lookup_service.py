@@ -1,14 +1,17 @@
-
 from DICOM_solver.config_handler import RoiConfig
 from dicompylercore.dicomparser import DicomParser
-
+import logging
+import traceback
 
 
 def get_standardized_name(synonym):
     config = RoiConfig()
     try:
         standardized_name = config.rois[synonym]
-    except KeyError:
+    except KeyError as e:
+        logging.warning(f"Error during calculation, Exception Message: {e}")
+        logging.warning(f"Exception Type: {type(e).__name__}")
+        logging.warning(traceback.format_exc())
         standardized_name = None
     return standardized_name
 
@@ -26,22 +29,16 @@ def get_standarized_names(rtstruct):
 
     return standardized_name_dict
 
+    # start
+
 
 def set_standarized_names(rtstruct):
-
-
     standardized_name_dict = get_standarized_names(rtstruct)
     for standardize_name, old_name in standardized_name_dict.items():
         roi_mask = rtstruct.get_roi_mask_by_name(old_name)
         rtstruct.add_roi(mask=roi_mask, name=standardize_name, approximate_contours=False)
-    #for roi in rtstruct_roi:
-    #    roi_mask = rtstruct.get_roi_mask_by_name(roi)
-    #
-    #    rtstruct.add_roi(mask=roi_mask, name=standardized_name_dict[roi], approximate_contours=False)
 
     return rtstruct
-
-
 
 
 def get_standardized_name2(synonym):
@@ -68,31 +65,28 @@ def get_standarized_names2(rtstruct: DicomParser):
 
     return standardized_name_dict
 
-
-def set_standarized_names2(rtstruct: DicomParser):
-    """
-    Modifies ROI names in the underlying pydicom dataset from a DicomParser object,
-    replacing original ROI names with standardized ones (in-place).
-    """
-    ds = rtstruct.ds  # access the pydicom dataset from dicompylercore
-
-    standardized_name_dict = get_standarized_names2(rtstruct)
-
-    # Update ROI names in StructureSetROISequence
-    for roi in ds.StructureSetROISequence:
-        original_name = roi.ROIName
-        if original_name in standardized_name_dict:
-            standardized_name = standardized_name_dict[original_name]
-            roi.ROIName = standardized_name
-
-
-    # Update corresponding ROIObservationLabel in RTROIObservationsSequence
-    if "RTROIObservationsSequence" in ds:
-        for obs in ds.RTROIObservationsSequence:
-            roi_number = obs.ReferencedROINumber
-            matching_roi = next((r for r in ds.StructureSetROISequence if r.ROINumber == roi_number), None)
-            if matching_roi:
-                obs.ROIObservationLabel = matching_roi.ROIName
-
-    return rtstruct  # same DicomParser object, updated internally
-
+# def set_standarized_names2(rtstruct: DicomParser):
+#    """
+#    Modifies ROI names in the underlying pydicom dataset from a DicomParser object,
+#    replacing original ROI names with standardized ones (in-place).
+#    """
+#    ds = rtstruct.ds  # access the pydicom dataset from dicompylercore
+#
+#    standardized_name_dict = get_standarized_names2(rtstruct)
+#
+#    # Update ROI names in StructureSetROISequence
+#    for roi in ds.StructureSetROISequence:
+#        original_name = roi.ROIName
+#        if original_name in standardized_name_dict:
+#            standardized_name = standardized_name_dict[original_name]
+#            roi.ROIName = standardized_name
+#
+#    # Update corresponding ROIObservationLabel in RTROIObservationsSequence
+#    if "RTROIObservationsSequence" in ds:
+#        for obs in ds.RTROIObservationsSequence:
+#            roi_number = obs.ReferencedROINumber
+#            matching_roi = next((r for r in ds.StructureSetROISequence if r.ROINumber == roi_number), None)
+#            if matching_roi:
+#                obs.ROIObservationLabel = matching_roi.ROIName
+#
+#    return rtstruct  # same DicomParser object, updated internally
