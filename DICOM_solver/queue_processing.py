@@ -12,7 +12,9 @@ class Consumer:
         self.config_dict_rmq = rmq_config.config
         self.db = None
         self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=5)
-        self.stop_heartbeat = threading.Event()
+        self._connected = False
+        self.retry_attempt = 5
+
 
     def open_connection_rmq(self):
         """Establish connection"""
@@ -22,34 +24,64 @@ class Consumer:
         connection_string = f"amqp://{user}:{pwd}@{host}:{port}/"
         connection = pika.BlockingConnection(pika.URLParameters(connection_string))
         self.connection_rmq = connection
-        self.channel = self.connection_rmq.channel()
-        heartbeat_thread = threading.Thread(target=self.send_heartbeats, daemon=True)
-        heartbeat_thread.start()
+        self._connected = True
 
-    def send_heartbeats(self):
-        """Send periodic heartbeats to keep the connection alive"""
-        while not self.stop_heartbeat.is_set():
-            try:
-                self.connection_rmq.process_data_events()
-                logging.debug("Heartbeat sent.")
-            except Exception as e:
-                logging.warning(f"Heartbeat error: {e}")
-            time.sleep(10)
+
+    def reconnect(self):
+        self.open_connection_rmq()
+        self.create_channel()
+
+    def create_channel(self):
+        if not self.connection_rmq or self.connection_rmq.is_closed:
+            self.open_connection_rmq()
+        self.channel = self.connection_rmq.channel()
 
     def close_connection(self):
         """Close connection"""
+        if self.connection_rmq:
+            self.channel.close()
+            self.connection_rmq.close()
+            logging.info("RMQ Connection closed.")
 
-        self.connection_rmq.close()
+    def check_queue_exists(self):
+        """Check if the queue exists"""
+        try:
+            self.channel.queue_declare(queue=self.config_dict_rmq["queue_name"], passive=True)
+            logging.info(f"Queue '{self.config_dict_rmq['queue_name']}' exists.")
+        except pika.exceptions.ChannelClosedByBroker as e:
+            logging.error(f"Queue '{self.config_dict_rmq['queue_name']}' does not exist.")
+            raise
+        except Exception as e:
+            logging.error(f"An error occurred while checking the queue: {e}")
+            raise e
 
     def start_consumer(self, callback):
-        self.channel.basic_consume(queue=self.config_dict_rmq["queue_name"],
-                                   on_message_callback=lambda ch, method, properties, body: callback(ch, method,
-                                                                                                     properties, body,
-                                                                                                     self.executor),
-                                   auto_ack=False)
-        try:
-            self.channel.start_consuming()
-        except KeyboardInterrupt:
-            print("Consumer stopped by user.")
-        finally:
-            self.executor.shutdown(wait=True)
+        while True:
+            i = 0
+            self.channel.basic_consume(queue=self.config_dict_rmq["queue_name"],
+                                       on_message_callback=lambda ch, method, properties, body: callback(ch, method,
+                                                                                                         properties, body,
+                                                                                                         self.executor),auto_ack=False)
+            try:
+                self.channel.start_consuming()
+                break
+            except KeyboardInterrupt:
+                print("Consumer stopped by user.")
+                break
+            except Exception as e:
+
+                logging.error(f"An error occurred while consuming messages: {e}")
+                logging.error("Reconnecting to RabbitMQ...")
+                while i < self.retry_attempt:
+                    try:
+                        i += 1
+                        self.reconnect()
+                        self.check_queue_exists()
+                        self.start_consumer(callback)
+                        break
+                    except Exception as e:
+                        logging.error(f"Reconnection attempt {i + 1} failed: {e}")
+                        time.sleep(5)
+
+        self.executor.shutdown(wait=True)
+        self.close_connection()

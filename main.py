@@ -16,7 +16,9 @@ if __name__ == "__main__":
         rabbitMQ_config = Config("rabbitMQ")
         cons = Consumer(rmq_config=rabbitMQ_config)
         cons.open_connection_rmq()
+        cons.create_channel()
         cons.start_consumer(callback=callback_tread)
+
     except Exception as e:
         logger.error(f"An error occurred while trying to start the server: {e}")
         logger.error("Please check the configuration and the RabbitMQ server status.")
