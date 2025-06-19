@@ -1,4 +1,3 @@
-
 import datetime
 import dicompylercore
 from uuid import uuid4
@@ -7,7 +6,6 @@ import os
 import logging
 from ..graphdb import upload_jsonld_to_graphdb
 from ..config_handler import Config
-
 
 
 class DVH_Output:
@@ -73,40 +71,32 @@ def return_output(patient_id, calculatedDose):
                     "@id": "https://johanvansoest.nl/ontologies/LinkedDicom-dvh/volume",
                     "@type": "@id"
                 },
-                "D10": {
-                    "@id": "https://johanvansoest.nl/ontologies/LinkedDicom-dvh/D10",
-                    "@type": "@id"
-                },
-                "D20": {
-                    "@id": "https://johanvansoest.nl/ontologies/LinkedDicom-dvh/D20",
-                    "@type": "@id"
-                },
-                "D30": {
-                    "@id": "https://johanvansoest.nl/ontologies/LinkedDicom-dvh/D30",
-                    "@type": "@id"
-                },
-                "D40": {
-                    "@id": "https://johanvansoest.nl/ontologies/LinkedDicom-dvh/D40",
+                "D2": {
+                    "@id": "https://johanvansoest.nl/ontologies/LinkedDicom-dvh/D2",
                     "@type": "@id"
                 },
                 "D50": {
                     "@id": "https://johanvansoest.nl/ontologies/LinkedDicom-dvh/D50",
                     "@type": "@id"
                 },
-                "D60": {
-                    "@id": "https://johanvansoest.nl/ontologies/LinkedDicom-dvh/D60",
+                "D95": {
+                    "@id": "https://johanvansoest.nl/ontologies/LinkedDicom-dvh/D95",
                     "@type": "@id"
                 },
-                "V5": {
-                    "@id": "https://johanvansoest.nl/ontologies/LinkedDicom-dvh/V5",
+                "D98": {
+                    "@id": "https://johanvansoest.nl/ontologies/LinkedDicom-dvh/D98",
                     "@type": "@id"
                 },
-                "V10": {
-                    "@id": "https://johanvansoest.nl/ontologies/LinkedDicom-dvh/V10",
+                "V35": {
+                    "@id": "https://johanvansoest.nl/ontologies/LinkedDicom-dvh/V35",
                     "@type": "@id"
                 },
-                "V20": {
-                    "@id": "https://johanvansoest.nl/ontologies/LinkedDicom-dvh/V20",
+                "V15": {
+                    "@id": "https://johanvansoest.nl/ontologies/LinkedDicom-dvh/V15",
+                    "@type": "@id"
+                },
+                "V0": {
+                    "@id": "https://johanvansoest.nl/ontologies/LinkedDicom-dvh/V0",
                     "@type": "@id"
                 },
                 "dvh_points": {
@@ -138,7 +128,3 @@ def return_output(patient_id, calculatedDose):
             "containsStructureDose": [j]
         }
         upload_jsonld_to_graphdb(resultDict, graphdb_url=graphdb_url)
-
-
-
-

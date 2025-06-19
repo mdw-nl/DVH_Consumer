@@ -72,11 +72,12 @@ class DVH_calculation:
 
     def calculate_dvh_all(self, dicom_bundle: DicomBundle, structures):
         output = []
-
+        #todo add function to select which structures use for the dvh calculation
+        #ls = []
         if len(structures) > 0:
             for index in structures:
                 logging.warning("Calculating structures " + str(structures[index]))
-
+                #if structures[index]["name"] in ls:
                 try:
                     calc_dvh = self.calculate_dvh(index, dicom_bundle)
                 except Exception as except_t:
@@ -84,9 +85,7 @@ class DVH_calculation:
                     logging.warning("Error something wrong")
                     logging.warning(traceback.format_exc())
                     logging.warning("Skipping...")
-
                     continue
-
                 try:
                     logging.info("DVh calculation complete. Processing output...")
                     result = self.process_dvh_result(calc_dvh, index, structures)
@@ -96,6 +95,8 @@ class DVH_calculation:
                     logging.warning(e)
                     logging.warning(traceback.format_exc())
                     continue
+                #else:
+                #    logging.info(f"Skipping structure {structures[index]['name']} as it is not in the list.")
         else:
             logging.info("NO structures")
         return output

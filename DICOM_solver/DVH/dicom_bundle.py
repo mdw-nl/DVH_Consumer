@@ -11,12 +11,16 @@ class DicomBundle:
         self.patient_id = patient_id
         self.rt_plan_path = rt_plan
         self.rt_struct_path: str = rt_struct
-        self.rt_ct_path: str = rt_ct[:rt_ct.rindex("/") + 1]
+        self.rt_ct_path: str = rt_ct[:rt_ct.rindex("/") + 1] if rt_ct else None
         if read:
-            self.rt_plan: DicomParser = DicomParser(rt_plan)
-            self.rt_struct: DicomParser = DicomParser(rt_struct)
-            self.rt_dose: [] = [DicomParser(rt) for rt in rt_dose]
-            self.rt_dose_path: [] = rt_dose
+            try:
+                self.rt_plan: DicomParser = DicomParser(rt_plan)
+                self.rt_struct: DicomParser = DicomParser(rt_struct)
+                self.rt_dose: [] = [DicomParser(rt) for rt in rt_dose]
+                self.rt_dose_path: [] = rt_dose
+            except Exception as e:
+                logging.error(f"Error reading DICOM files: {e}")
+                raise e
         logging.info(f"Ct path is {self.rt_ct_path}")
 
     def __eq__(self, other):
@@ -40,8 +44,9 @@ class DicomBundle:
             for rt in self.rt_dose_path:
                 logging.info(f"Removing data rt dose {self.rt_dose_path}")
                 os.remove(rt)
-            for f in os.listdir(self.rt_ct_path):
-                os.remove(os.path.join(self.rt_ct_path, f))
+            if self.rt_plan_path is not None:
+                for f in os.listdir(self.rt_ct_path):
+                    os.remove(os.path.join(self.rt_ct_path, f))
         except Exception as e:
             logging.warning(f"Error deleting files: {e}")
 

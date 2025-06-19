@@ -15,6 +15,7 @@ from DICOM_solver.roi_handler import combine_rois
 from uuid import uuid4
 from .Config.global_var import INSERT_QUERY_DICOM_META
 from datetime import datetime
+import os
 
 
 def callback_tread(ch, method, properties, body, executor):
@@ -54,6 +55,28 @@ def callback_tread(ch, method, properties, body, executor):
         raise e
 
 
+def verify_bundle(dicom_bundle):
+    """
+    Verify that the dicom bundle component path exist using os
+    :param dicom_bundle:
+    :return:
+    """
+    logging.info(f"Verifying DicomBundle for patient {dicom_bundle.patient_id}")
+    logging.info(f"RT Plan path: {dicom_bundle.rt_plan_path}")
+    logging.info(f"RT Struct path: {dicom_bundle.rt_struct_path}")
+    logging.info(f"RT Dose path: {dicom_bundle.rt_dose_path}")
+    if not dicom_bundle.rt_plan_path or not dicom_bundle.rt_struct_path:
+        logging.warning("Missing RT Plan, RT Struct  path in the DicomBundle")
+        return False
+    if not os.path.exists(dicom_bundle.rt_plan_path):
+        logging.warning(f"RT Plan file does not exist: {dicom_bundle.rt_plan_path}")
+        return False
+    if not os.path.exists(dicom_bundle.rt_struct_path):
+        logging.warning(f"RT Struct file does not exist: {dicom_bundle.rt_struct_path}")
+        return False
+    return True
+
+
 def process_message(study_uid):
     """
     The function use the study_uid to retrieve the data from the database.
@@ -71,26 +94,29 @@ def process_message(study_uid):
         if verified:
             logging.info(f"result is :{result}")
             dicom_bundles = collect_patients_dicom(result)
-            for dicom_bundle in dicom_bundles:
-                logging.info(f"Patients to analyze:{len(dicom_bundles)} ")
-                logging.info(f"{dicom_bundles[0]}")
-                try:
-                    calculate_dvh_curves(dicom_bundle)
+            if dicom_bundles:
+                for dicom_bundle in dicom_bundles:
+                    logging.info(f"Patients to analyze:{len(dicom_bundles)} ")
+                    logging.info(f"{dicom_bundles[0]}")
+                    try:
 
+                        calculate_dvh_curves(dicom_bundle)
+                    except Exception as e:
+                        logging.warning(f"Error during calculation, Exception Message: {e}")
+                        logging.warning(f"Exception Type: {type(e).__name__}")
+                        logging.warning(traceback.format_exc())
+                        raise e
+                try:
+
+                    for dicom_bundle in dicom_bundles:
+                        dicom_bundle.rm_data_patient()
                 except Exception as e:
-                    logging.warning(f"Error during calculation, Exception Message: {e}")
+                    logging.warning(f"Error during delete of patient data, Exception Message: {e}")
                     logging.warning(f"Exception Type: {type(e).__name__}")
                     logging.warning(traceback.format_exc())
                     raise e
-            try:
-
-                for dicom_bundle in dicom_bundles:
-                    dicom_bundle.rm_data_patient()
-            except Exception as e:
-                logging.warning(f"Error during delete of patient data, Exception Message: {e}")
-                logging.warning(f"Exception Type: {type(e).__name__}")
-                logging.warning(traceback.format_exc())
-                raise e
+            else:
+                logging.info("No dicom bundles found for the study uid")
         db.disconnect()
     except Exception as e:
         logging.warning(f"Exception Type: {type(e).__name__}")
@@ -155,6 +181,7 @@ def verify_full(df: pd.DataFrame):
             check_if_all_in(list(set(df.loc[df["patient_id"] == patient_id]["modality"].values.tolist())))
             for patient_id in list_patient
         )
+        logging.info(f"All dicom component received ? {result} for {n_patients} patients")
     elif len(list_patient) == 1:
         logging.info("Only one patient")
         patient_id = list_patient[0]
@@ -178,7 +205,6 @@ def link_rt_plan_dose(df, rt_plan_uid_list, patient_id, ct, rt_struct):
     """
     list_do = []
     for k in rt_plan_uid_list:
-        # logging.info(f"Dose Sop instance uid to match: {k}")
         rt_dose = df.loc[(df["referenced_rt_plan_uid"] == k) & (df["modality"] == "RTDOSE")][
             "file_path"].values.tolist()
         rt_plan = df.loc[(df["sop_instance_uid"] == k) & (df["modality"] == "RTPLAN")][

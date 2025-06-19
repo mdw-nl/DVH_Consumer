@@ -55,7 +55,7 @@ class Consumer:
             logging.error(f"An error occurred while checking the queue: {e}")
             raise e
 
-    def start_consumer(self, callback):
+    def start_consumer(self,  callback):
         while True:
             i = 0
             self.channel.basic_consume(queue=self.config_dict_rmq["queue_name"],
