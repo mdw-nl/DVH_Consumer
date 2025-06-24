@@ -1,8 +1,6 @@
 import datetime
 import dicompylercore
 from uuid import uuid4
-import json
-import os
 import logging
 from ..graphdb import upload_jsonld_to_graphdb
 from ..config_handler import Config

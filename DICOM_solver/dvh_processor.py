@@ -158,8 +158,9 @@ def get_all_uid(db, uid):
 def check_if_all_in(list_v):
     list_m = ['CT', 'RTSTRUCT', 'RTPLAN', 'RTDOSE']
     value_ = False
-    for e in list_v:
-        if e not in list_m:
+    logging.info(f"Checking if all modalities are present in the list: {list_v}")
+    for e in list_m:
+        if e not in list_v:
             return False
         else:
             value_ = True
