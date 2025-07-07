@@ -15,19 +15,13 @@ def prepare_output(dvh_points, structure, calc_dvh, dict_value):
         "mean": {"@id": f"{id_data}/mean", "unit": "Gray", "value": calc_dvh.mean},
         "max": {"@id": f"{id_data}/max", "unit": "Gray", "value": calc_dvh.max},
         "volume": {"@id": f"{id_data}/volume", "unit": "cc", "value": int(calc_dvh.volume)},
-        "D10": {"@id": f"{id_data}/D10", "unit": "Gray", "value": float(calc_dvh.D10.value)},
-        "D20": {"@id": f"{id_data}/D20", "unit": "Gray", "value": float(calc_dvh.D20.value)},
-        "D30": {"@id": f"{id_data}/D30", "unit": "Gray", "value": float(calc_dvh.D30.value)},
-        "D40": {"@id": f"{id_data}/D40", "unit": "Gray", "value": float(calc_dvh.D40.value)},
+        "D2": {"@id": f"{id_data}/D2", "unit": "Gray", "value": float(calc_dvh.D2.value)},
         "D50": {"@id": f"{id_data}/D50", "unit": "Gray", "value": float(calc_dvh.D50.value)},
-        "D60": {"@id": f"{id_data}/D60", "unit": "Gray", "value": float(calc_dvh.D60.value)},
-        "V5": {"@id": f"{id_data}/V5", "unit": "Gray", "value": dict_value["V5value"]},
-        "V10": {"@id": f"{id_data}/V10", "unit": "Gray", "value": dict_value["V10value"]},
-        "V20": {"@id": f"{id_data}/V20", "unit": "Gray", "value": dict_value["V20value"]},
-        "V30": {"@id": f"{id_data}/V5", "unit": "Gray", "value": dict_value["V30value"]},
-        "V40": {"@id": f"{id_data}/V10", "unit": "Gray", "value": dict_value["V40value"]},
-        "V50": {"@id": f"{id_data}/V20", "unit": "Gray", "value": dict_value["V50value"]},
-        "V60": {"@id": f"{id_data}/V20", "unit": "Gray", "value": dict_value["V60value"]},
+        "D95": {"@id": f"{id_data}/D95", "unit": "Gray", "value": float(calc_dvh.D95.value)},
+        "D98": {"@id": f"{id_data}/D98", "unit": "Gray", "value": float(calc_dvh.D98.value)},
+        "V0": {"@id": f"{id_data}/V0", "unit": "Gray", "value": dict_value["V0value"]},
+        "V15": {"@id": f"{id_data}/V15", "unit": "Gray", "value": dict_value["V15value"]},
+        "V35": {"@id": f"{id_data}/V35", "unit": "Gray", "value": dict_value["V35value"]},
         "color": ','.join(str(e) for e in structure.get("color", np.array([])).tolist()),
         "dvh_curve": {
             "@id": f"{id_data}/dvh_curve",
@@ -56,7 +50,7 @@ class DVH_calculation:
                 "d_point": dvh_d[i],
                 "v_point": dvh_v[i]
             })
-        for v in [5, 10, 20, 30, 40, 50, 60]:
+        for v in [0, 5, 10, 15, 20, 30, 35]:
             key = f"V{v}value"
             try:
                 dict_values[key] = float(getattr(calculation_r, f"V{v}").value)
@@ -72,12 +66,12 @@ class DVH_calculation:
 
     def calculate_dvh_all(self, dicom_bundle: DicomBundle, structures):
         output = []
-        #todo add function to select which structures use for the dvh calculation
-        #ls = []
+        # todo add function to select which structures use for the dvh calculation
+        # ls = []
         if len(structures) > 0:
             for index in structures:
                 logging.warning("Calculating structures " + str(structures[index]))
-                #if structures[index]["name"] in ls:
+                # if structures[index]["name"] in ls:
                 try:
                     calc_dvh = self.calculate_dvh(index, dicom_bundle)
                 except Exception as except_t:
@@ -95,7 +89,7 @@ class DVH_calculation:
                     logging.warning(e)
                     logging.warning(traceback.format_exc())
                     continue
-                #else:
+                # else:
                 #    logging.info(f"Skipping structure {structures[index]['name']} as it is not in the list.")
         else:
             logging.info("NO structures")
