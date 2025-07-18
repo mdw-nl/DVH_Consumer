@@ -64,33 +64,34 @@ class DVH_calculation:
         logging.info(f"Structure: {n_s}")
         return structOut
 
-    def calculate_dvh_all(self, dicom_bundle: DicomBundle, structures):
+    def calculate_dvh_all(self, dicom_bundle: DicomBundle, structures, str_name=None):
         output = []
         # todo add function to select which structures use for the dvh calculation
         # ls = []
         if len(structures) > 0:
             for index in structures:
+
                 logging.warning("Calculating structures " + str(structures[index]))
-                # if structures[index]["name"] in ls:
-                try:
-                    calc_dvh = self.calculate_dvh(index, dicom_bundle)
-                except Exception as except_t:
-                    logging.warning(except_t)
-                    logging.warning("Error something wrong")
-                    logging.warning(traceback.format_exc())
-                    logging.warning("Skipping...")
-                    continue
-                try:
-                    logging.info("DVh calculation complete. Processing output...")
-                    result = self.process_dvh_result(calc_dvh, index, structures)
-                    output.append(result)
-                except Exception as e:
-                    logging.info("error")
-                    logging.warning(e)
-                    logging.warning(traceback.format_exc())
-                    continue
-                # else:
-                #    logging.info(f"Skipping structure {structures[index]['name']} as it is not in the list.")
+                if (str_name and structures[index]["name"] == str_name) or not str_name:
+                    try:
+                        calc_dvh = self.calculate_dvh(index, dicom_bundle)
+                    except Exception as except_t:
+                        logging.warning(except_t)
+                        logging.warning("Error something wrong")
+                        logging.warning(traceback.format_exc())
+                        logging.warning("Skipping...")
+                        continue
+                    try:
+                        logging.info("DVh calculation complete. Processing output...")
+                        result = self.process_dvh_result(calc_dvh, index, structures)
+                        output.append(result)
+                    except Exception as e:
+                        logging.info("error")
+                        logging.warning(e)
+                        logging.warning(traceback.format_exc())
+                        continue
+                else:
+                    logging.info(f"Skipping structure {structures[index]['name']} as it is not in the list.")
         else:
             logging.info("NO structures")
         return output

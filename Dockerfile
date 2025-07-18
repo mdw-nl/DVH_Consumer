@@ -7,6 +7,7 @@ COPY main.py main.py
 COPY requirements.txt requirements.txt
 
 ENV PYTHONPATH "${PYTHONPATH}:/DICOM_solver"
+ENV DELETE_END=False
 
 RUN pip install --no-cache-dir -r requirements.txt
 # Required for rtutils
@@ -15,4 +16,5 @@ RUN apt-get update && apt-get install -y \
     libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
+EXPOSE 8000
 CMD ["python", "main.py"]

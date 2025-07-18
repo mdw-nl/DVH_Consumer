@@ -13,7 +13,7 @@ import re
 from rt_utils import RTStructBuilder
 from DICOM_solver.roi_handler import combine_rois
 from uuid import uuid4
-from .Config.global_var import INSERT_QUERY_DICOM_META
+from .Config.global_var import INSERT_QUERY_DICOM_META, QUERY_UID, DELETE_END
 from datetime import datetime
 import os
 
@@ -83,6 +83,8 @@ def process_message(study_uid):
     Verify that for each patient we have all dicom required nad start the dvh calculation
     """
     try:
+
+        logging.info(f"Delete is : {DELETE_END}")
         db = connect_db()
 
         if study_uid is None:
@@ -106,15 +108,18 @@ def process_message(study_uid):
                         logging.warning(f"Exception Type: {type(e).__name__}")
                         logging.warning(traceback.format_exc())
                         raise e
-                try:
+                logging.info(DELETE_END)
+                if DELETE_END:
+                    logging.info(f"Deleting patient data from the database, {DELETE_END}")
+                    try:
 
-                    for dicom_bundle in dicom_bundles:
-                        dicom_bundle.rm_data_patient()
-                except Exception as e:
-                    logging.warning(f"Error during delete of patient data, Exception Message: {e}")
-                    logging.warning(f"Exception Type: {type(e).__name__}")
-                    logging.warning(traceback.format_exc())
-                    raise e
+                        for dicom_bundle in dicom_bundles:
+                            dicom_bundle.rm_data_patient()
+                    except Exception as e:
+                        logging.warning(f"Error during delete of patient data, Exception Message: {e}")
+                        logging.warning(f"Exception Type: {type(e).__name__}")
+                        logging.warning(traceback.format_exc())
+                        raise e
             else:
                 logging.info("No dicom bundles found for the study uid")
         db.disconnect()
@@ -149,7 +154,7 @@ def get_all_uid(db, uid):
     """
     query = f"Select * from public.dicom_insert where study_instance_uid ='{uid}';"
     try:
-        df = pd.read_sql_query(query, db.conn)
+        df = pd.read_sql_query(QUERY_UID, db.conn,params=(uid,))
     except Exception as e:
         raise e
     return df
@@ -167,7 +172,7 @@ def check_if_all_in(list_v):
     return value_
 
 
-def verify_full(df: pd.DataFrame):
+def verify_full(df: pd.DataFrame)-> bool:
     """
 
     :param df:
@@ -227,6 +232,7 @@ def collect_patients_dicom(df: pd.DataFrame):
     :param df:
     :return:
     """
+    logging.info(f"Dataframe is {df.columns}")
     list_patient = list(set(df["patient_id"].values.tolist()))
     result_list = []
     for patient_id in list_patient:
@@ -272,7 +278,7 @@ def collect_patients_dicom(df: pd.DataFrame):
 #        return rt_struct
 
 
-def calculate_dvh_curves(dicom_bundle):
+def calculate_dvh_curves(dicom_bundle, str_name=None,gdp=True):
     """
 
     """
@@ -283,8 +289,11 @@ def calculate_dvh_curves(dicom_bundle):
     dicom_bundle = combine(dicom_bundle)
     structures = dicom_bundle.rt_struct.GetStructures()
 
-    output = dvh_c.calculate_dvh_all(dicom_bundle, structures)
-    return_output(dicom_bundle.patient_id, output)
+    output = dvh_c.calculate_dvh_all(dicom_bundle, structures, str_name)
+    if not gdp:
+        return output
+    else:
+        return_output(dicom_bundle.patient_id, output)
     logging.info(f"Calculation complete for {dicom_bundle.patient_id}")
 
 

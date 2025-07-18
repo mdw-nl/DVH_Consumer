@@ -8,3 +8,5 @@ rdflib
 rt_utils
 dicompyler-core
 requests
+uvicorn
+fastapi

@@ -15,7 +15,6 @@ class Consumer:
         self._connected = False
         self.retry_attempt = 5
 
-
     def open_connection_rmq(self):
         """Establish connection"""
         host, port, user, pwd = self.config_dict_rmq["host"], self.config_dict_rmq["port"] \
@@ -25,7 +24,6 @@ class Consumer:
         connection = pika.BlockingConnection(pika.URLParameters(connection_string))
         self.connection_rmq = connection
         self._connected = True
-
 
     def reconnect(self):
         self.open_connection_rmq()
@@ -55,13 +53,15 @@ class Consumer:
             logging.error(f"An error occurred while checking the queue: {e}")
             raise e
 
-    def start_consumer(self,  callback):
+    def start_consumer(self, callback):
         while True:
             i = 0
             self.channel.basic_consume(queue=self.config_dict_rmq["queue_name"],
                                        on_message_callback=lambda ch, method, properties, body: callback(ch, method,
-                                                                                                         properties, body,
-                                                                                                         self.executor),auto_ack=False)
+                                                                                                         properties,
+                                                                                                         body,
+                                                                                                         self.executor),
+                                       auto_ack=False)
             try:
                 self.channel.start_consuming()
                 break

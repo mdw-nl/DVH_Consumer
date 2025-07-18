@@ -19,7 +19,7 @@ GraphDB:
     repo: "protrait"
 API:
     host: "host.docker.internal"
-    port: "8000"
+    port: "8666"
 
 
 

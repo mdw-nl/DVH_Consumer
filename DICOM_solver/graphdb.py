@@ -18,6 +18,7 @@ def upload_jsonld_to_graphdb(jsonld_data, graphdb_url):
     config_dict_api = gdb.config
     host = config_dict_api["host"]
     port = config_dict_api["port"]
+    logging.info(f"GraphDB URL: {graphdb_url}, Host: {host}, Port: {port}")
     # Headers to indicate that we are sending JSON-LD data
     headers = {
         "Content-Type": "application/ld+json"
