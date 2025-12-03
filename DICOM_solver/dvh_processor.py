@@ -152,7 +152,6 @@ def get_all_uid(db, uid):
     :param uid:
     :return:
     """
-    query = f"Select * from public.dicom_insert where study_instance_uid ='{uid}';"
     try:
         df = pd.read_sql_query(QUERY_UID, db.conn,params=(uid,))
     except Exception as e:
@@ -278,14 +277,18 @@ def collect_patients_dicom(df: pd.DataFrame):
 #        return rt_struct
 
 
-def calculate_dvh_curves(dicom_bundle, str_name=None,gdp=True):
+def calculate_dvh_curves(dicom_bundle, str_name=None, gdp=True):
     """
-
+    Calculate dvh curves for the dicom bundle provided
+    :param dicom_bundle:
+    :param str_name:
+    :param gdp:
     """
     dvh_c = DVH_calculation()
     logging.info(f"RTstruct {dicom_bundle.rt_struct}")
     logging.info(f"RTPlan :{dicom_bundle.rt_plan}")
     logging.info(f"RTdose :{dicom_bundle.rt_dose}")
+    #Combination happen here with renaiming
     dicom_bundle = combine(dicom_bundle)
     structures = dicom_bundle.rt_struct.GetStructures()
 
@@ -298,6 +301,12 @@ def calculate_dvh_curves(dicom_bundle, str_name=None,gdp=True):
 
 
 def structure_combination(item, rt_struct):
+    """
+
+    :param item:
+    :param rt_struct:
+
+    """
     roi_string = next(iter(item.values()))["roi"]
     ROI_total_string = roi_string
     string_parts = re.split(r'\s+', roi_string)
@@ -315,6 +324,9 @@ def structure_combination(item, rt_struct):
 
 
 def combine(dicom_bundle: DicomBundle):
+    """
+    Combine structures based on configuration
+    """
     rt_struct = RTStructBuilder.create_from(dicom_bundle.rt_ct_path, dicom_bundle.rt_struct_path)
     logging.info("Starting combination")
     dvh_calculations_list = Config("dvh-calculations").config
