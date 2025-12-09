@@ -32,11 +32,16 @@ def return_output(patient_id, calculatedDose):
     repo = config_dict_gdb["repo"]
     graphdb_url = f"http://{host}:{port}/repositories/{repo}/statements"
     v_values = Config("V-values").config
+    d_values = Config("D-values").config
 
     list_v = []
     for v in v_values:
         key = f"V{v}"
         list_v.append(key)
+    list_d = []
+    for v in d_values:
+        key = f"D{v}"
+        list_d.append(key)
 
     for j in calculatedDose:
         resultDict = {
@@ -121,6 +126,11 @@ def return_output(patient_id, calculatedDose):
             "containsStructureDose": [j]
         }
         for val in list_v:
+            resultDict["@context"][val] = {
+                "@id": f"https://johanvansoest.nl/ontologies/LinkedDicom-dvh/{val}",
+                "@type": "@id"
+            }
+        for val in list_d:
             resultDict["@context"][val] = {
                 "@id": f"https://johanvansoest.nl/ontologies/LinkedDicom-dvh/{val}",
                 "@type": "@id"

@@ -7,7 +7,7 @@ from .dicom_bundle import DicomBundle
 from ..config_handler import Config
 
 
-def prepare_output(dvh_points, structure, calc_dvh, dict_value):
+def prepare_output(dvh_points, structure, calc_dvh, dict_value_v, list_value_d):
     id_data = "http://data.local/ldcm-rt/" + str(uuid4())
     structOut = {
         "@id": id_data,
@@ -16,24 +16,27 @@ def prepare_output(dvh_points, structure, calc_dvh, dict_value):
         "mean": {"@id": f"{id_data}/mean", "unit": "Gray", "value": calc_dvh.mean},
         "max": {"@id": f"{id_data}/max", "unit": "Gray", "value": calc_dvh.max},
         "volume": {"@id": f"{id_data}/volume", "unit": "cc", "value": int(calc_dvh.volume)},
-        "D2": {"@id": f"{id_data}/D2", "unit": "Gray", "value": float(calc_dvh.D2.value)},
-        "D50": {"@id": f"{id_data}/D50", "unit": "Gray", "value": float(calc_dvh.D50.value)},
-        "D95": {"@id": f"{id_data}/D95", "unit": "Gray", "value": float(calc_dvh.D95.value)},
-        "D98": {"@id": f"{id_data}/D98", "unit": "Gray", "value": float(calc_dvh.D98.value)},
-        #"V0": {"@id": f"{id_data}/V0", "unit": "Gray", "value": dict_value["V0value"]},
-        #"V15": {"@id": f"{id_data}/V15", "unit": "Gray", "value": dict_value["V15value"]},
-        #"V35": {"@id": f"{id_data}/V35", "unit": "Gray", "value": dict_value["V35value"]},
+        #"D2": {"@id": f"{id_data}/D2", "unit": "Gray", "value": float(calc_dvh.D2.value)},
+        #"D50": {"@id": f"{id_data}/D50", "unit": "Gray", "value": float(calc_dvh.D50.value)},
+        #"D95": {"@id": f"{id_data}/D95", "unit": "Gray", "value": float(calc_dvh.D95.value)},
+        #"D98": {"@id": f"{id_data}/D98", "unit": "Gray", "value": float(calc_dvh.D98.value)},
         "color": ','.join(str(e) for e in structure.get("color", np.array([])).tolist()),
         "dvh_curve": {
             "@id": f"{id_data}/dvh_curve",
             "dvh_points": dvh_points
         }
     }
-    logging.info(f"Preparing additional DVH values for output...{dict_value}")
-    for k, v in dict_value.items():
+    logging.info(f"Preparing additional DVH values for output...{dict_value_v}")
+    for k, v in dict_value_v.items():
         logging.debug(f"Processing key: {k} with value: {v}")
         structOut[k] = {"@id": f"{id_data}/{k}", "unit": "Gray", "value": v}
         logging.debug(f"Added {k} with value {v} to output.")
+
+    for k in list_value_d:
+        logging.debug(f"Processing {k}")
+        structOut[k] = {"@id": f"{id_data}/{k}", "unit": "Gray", "value": getattr(calc_dvh, k).value}
+        logging.debug(f"Added {k} ")
+
 
     return structOut
 
@@ -59,6 +62,7 @@ class DVH_calculation:
         dvh_points = []
         dict_values_v = {}
         v_values = Config("V-values").config
+        d_values = Config("D-values").config
 
         for i in range(0, len(dvh_d)):
             dvh_points.append({
@@ -74,8 +78,9 @@ class DVH_calculation:
                 logging.warning(f"Value not available for {key}, setting to None.")
                 logging.error(e)
                 dict_values_v[key] = None
+        d_value_list = ["D"+str(d) for d in d_values]
 
-        structOut = prepare_output(dvh_points, structures[index], calculation_r, dict_values_v)
+        structOut = prepare_output(dvh_points, structures[index], calculation_r, dict_values_v,d_value_list)
         n_s = structOut["structureName"]
         logging.info(f"Structure: {n_s}")
         return structOut
