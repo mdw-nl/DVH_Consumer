@@ -30,7 +30,7 @@ class DataAPI:
                     logging.info(f"{dicom_bundles[0]}")
                     try:
 
-                        res = calculate_dvh_curves(dicom_bundle, str_name=structure_name,gdp=False)
+                        res = calculate_dvh_curves(dicom_bundle, str_name=structure_name, gdp=False)
                         logging.info(f"Dvh calculation complete for patient {dicom_bundle.patient_id} "
                                      f"{res}")
                         return res

@@ -7,7 +7,7 @@ COPY main.py main.py
 COPY requirements.txt requirements.txt
 
 ENV PYTHONPATH "${PYTHONPATH}:/DICOM_solver"
-ENV DELETE_END=False
+ENV DELETE_END=True
 
 RUN pip install --no-cache-dir -r requirements.txt
 # Required for rtutils

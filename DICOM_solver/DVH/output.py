@@ -31,6 +31,17 @@ def return_output(patient_id, calculatedDose):
     port = config_dict_gdb["port"]
     repo = config_dict_gdb["repo"]
     graphdb_url = f"http://{host}:{port}/repositories/{repo}/statements"
+    v_values = Config("V-values").config
+    d_values = Config("D-values").config
+
+    list_v = []
+    for v in v_values:
+        key = f"V{v}"
+        list_v.append(key)
+    list_d = []
+    for v in d_values:
+        key = f"D{v}"
+        list_d.append(key)
 
     for j in calculatedDose:
         resultDict = {
@@ -85,18 +96,7 @@ def return_output(patient_id, calculatedDose):
                     "@id": "https://johanvansoest.nl/ontologies/LinkedDicom-dvh/D98",
                     "@type": "@id"
                 },
-                "V35": {
-                    "@id": "https://johanvansoest.nl/ontologies/LinkedDicom-dvh/V35",
-                    "@type": "@id"
-                },
-                "V15": {
-                    "@id": "https://johanvansoest.nl/ontologies/LinkedDicom-dvh/V15",
-                    "@type": "@id"
-                },
-                "V0": {
-                    "@id": "https://johanvansoest.nl/ontologies/LinkedDicom-dvh/V0",
-                    "@type": "@id"
-                },
+
                 "dvh_points": {
                     "@id": "https://johanvansoest.nl/ontologies/LinkedDicom-dvh/dvh_point",
                     "@type": "@id"
@@ -125,4 +125,15 @@ def return_output(patient_id, calculatedDose):
             "dateCreated": datetime.datetime.now().isoformat(),
             "containsStructureDose": [j]
         }
+        for val in list_v:
+            resultDict["@context"][val] = {
+                "@id": f"https://johanvansoest.nl/ontologies/LinkedDicom-dvh/{val}",
+                "@type": "@id"
+            }
+        for val in list_d:
+            resultDict["@context"][val] = {
+                "@id": f"https://johanvansoest.nl/ontologies/LinkedDicom-dvh/{val}",
+                "@type": "@id"
+            }
+
         upload_jsonld_to_graphdb(resultDict, graphdb_url=graphdb_url)
