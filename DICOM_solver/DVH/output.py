@@ -125,4 +125,5 @@ def return_output(patient_id, calculatedDose):
             "dateCreated": datetime.datetime.now().isoformat(),
             "containsStructureDose": [j]
         }
+        
         upload_jsonld_to_graphdb(resultDict, graphdb_url=graphdb_url)

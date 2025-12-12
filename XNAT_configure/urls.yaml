@@ -1,0 +1,4 @@
+scp_url: "http://xnat-web:8080/xapi/dicomscp"
+project_url: "http://xnat-web:8080/data/projects"
+site_url: "http://xnat-web:8080/xapi/siteConfig"
+dicom_routing_url: "http://xnat-web:8080/data/config/dicom/sessionRules"

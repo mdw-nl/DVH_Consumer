@@ -3,7 +3,8 @@ import logging
 import concurrent.futures
 import time
 import threading
-
+import os
+import json
 
 class Consumer:
     def __init__(self, rmq_config):
@@ -17,7 +18,7 @@ class Consumer:
 
     def open_connection_rmq(self):
         """Establish connection"""
-        host, port, user, pwd = self.config_dict_rmq["host"], self.config_dict_rmq["port"] \
+        host, port, user, pwd = self.config_dict_rmq["localhost"], self.config_dict_rmq["port"] \
             , self.config_dict_rmq["username"], self.config_dict_rmq["password"]
 
         connection_string = f"amqp://{user}:{pwd}@{host}:{port}/"
@@ -85,3 +86,24 @@ class Consumer:
 
         self.executor.shutdown(wait=True)
         self.close_connection()
+
+    def send_message(self, folder_path):
+        """Send message to queue"""
+        if self.connection_rmq is None or self.connection_rmq.is_closed:
+                self.open_connection_rmq()
+
+        if self.channel is None or self.channel.is_closed:
+            self.create_channel()        
+
+        for file in os.listdir(folder_path):
+            file_path = os.path.join(folder_path, file)
+            with open(file_path, 'r') as f:
+                data = json.load(f)
+            message_json = json.dumps(data)
+            
+            self.channel.basic_publish(
+            exchange='',
+            routing_key=self.config_dict_rmq["queue_name"],
+            body=message_json
+            )
+            logging.info(f"Sent message: {file}")

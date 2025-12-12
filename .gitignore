@@ -30,3 +30,7 @@ coverage.xml
 
 dicomdata/
 dicomtestdata.zip
+
+postgres-data
+DICOM_data
+xnat-data
