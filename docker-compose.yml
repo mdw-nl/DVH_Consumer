@@ -18,6 +18,27 @@ services:
     networks:
       - app_network
 
+  postgres:
+    image: postgres:15
+    container_name: dvh_db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: dvh_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    networks:
+      - app_network
+
   # Anonymizer app service
   dvh_consumer:
     build:
@@ -31,6 +52,7 @@ services:
     restart: on-failure
     depends_on:
       - rabbitmq
+      - postgres
     links: 
       - rabbitmq
     volumes:
@@ -39,100 +61,109 @@ services:
 
     networks:
       - app_network
+    command:
+      - sh
+      - -c
+      - |
+        /wait-for-postgres.sh dvh_db python -m DICOM_solver.PostrgresDVHdb && \
+        python main.py
 
-  send_xnat:
-    build: 
-      context: https://github.com/TomSinsel/send_xnat_data.git 
-      dockerfile: Dockerfile
-    container_name: "send_xnat"
-    environment:
-      - RABBITMQ_HOST=rabbitmq  # Service name of the RabbitMQ container
-      - RABBITMQ_PORT=5672
-      - RABBITMQ_USER=user
-      - RABBITMQ_PASSWORD=password
-    restart: on-failure
-    depends_on:
-      - rabbitmq
-    links: 
-      - rabbitmq
-    volumes:
-      - ./config.yaml:/app/config.yaml  # Mount config.yaml into the container
-      - ./data/anonymised_datasets:/app/anonimised_folder
-      - ./data/xnat_listener:/app/data
-      - ./DVH_data:/app/DVH_data
-    networks:
-      - app_network
+  # send_xnat:
+  #   build: 
+  #     context: https://github.com/TomSinsel/send_xnat_data.git 
+  #     dockerfile: Dockerfile
+  #   container_name: "send_xnat"
+  #   environment:
+  #     - RABBITMQ_HOST=rabbitmq  # Service name of the RabbitMQ container
+  #     - RABBITMQ_PORT=5672
+  #     - RABBITMQ_USER=user
+  #     - RABBITMQ_PASSWORD=password
+  #   restart: on-failure
+  #   depends_on:
+  #     - rabbitmq
+  #   links: 
+  #     - rabbitmq
+  #   volumes:
+  #     - ./config.yaml:/app/config.yaml  # Mount config.yaml into the container
+  #     - ./data/anonymised_datasets:/app/anonimised_folder
+  #     - ./data/xnat_listener:/app/data
+  #     - ./DVH_data:/app/DVH_data
+  #   networks:
+  #     - app_network
 
-  xnat-web:
-    image: ghcr.io/mdw-nl/mdw-xnat:1.9
-    environment:
-      XNAT_VERSION: ${XNAT_VERSION}
-      XNAT_SMTP_ENABLED: ${XNAT_SMTP_ENABLED}
-      XNAT_SMTP_HOSTNAME: ${XNAT_SMTP_HOSTNAME}
-      XNAT_SMTP_PORT: ${XNAT_SMTP_PORT}
-      XNAT_SMTP_AUTH: ${XNAT_SMTP_AUTH}
-      XNAT_SMTP_USERNAME: ${XNAT_SMTP_USERNAME}
-      XNAT_SMTP_PASSWORD: ${XNAT_SMTP_PASSWORD}
-      XNAT_DATASOURCE_DRIVER: ${XNAT_DATASOURCE_DRIVER}
-      XNAT_DATASOURCE_URL: ${XNAT_DATASOURCE_URL}
-      XNAT_DATASOURCE_USERNAME: ${XNAT_DATASOURCE_USERNAME}
-      XNAT_DATASOURCE_PASSWORD: ${XNAT_DATASOURCE_PASSWORD}
-      TOMCAT_XNAT_FOLDER: ${TOMCAT_XNAT_FOLDER}
-      XNAT_ROOT: ${XNAT_ROOT}
-      XNAT_HOME: ${XNAT_HOME}
-      XNAT_EMAIL: ${XNAT_EMAIL}
-      CATALINA_OPTS: -Xms${XNAT_MIN_HEAP} -Xmx${XNAT_MAX_HEAP} -Dxnat.home=${XNAT_HOME}
-    container_name: xnat-web
-    ports:
-      - 8080:8080
-      - 8104:8104
-    volumes:
-      - ./xnat/plugins:${XNAT_HOME}/plugins
-      - ./xnat-data/home/logs:${XNAT_HOME}/logs
-      - ./xnat-data/archive:${XNAT_ROOT}/archive
-      - ./xnat-data/build:${XNAT_ROOT}/build
-      - ./xnat-data/cache:${XNAT_ROOT}/cache
-      - /var/run/docker.sock:/var/run/docker.sock
-      - ./XNAT_configure:/XNAT_conf/XNAT_configure
-    depends_on:
-      - xnat-db
-    networks:
-      - app_network
-
-
-  xnat-db:
-    image: postgres:${PG_VERSION}
-    container_name: "xnat-db"
-    expose:
-      - "5432"
-    volumes:
-      - ./postgres-data:/var/lib/postgresql/data
-      - ./postgres:/docker-entrypoint-initdb.d
-    environment:
-      - POSTGRES_PASSWORD=${XNAT_DATASOURCE_ADMIN_PASSWORD}
-      - POSTGRES_DB=${XNAT_DATASOURCE_NAME}
-      # variables for the sql script
-      - XNAT_DATASOURCE_USERNAME=${XNAT_DATASOURCE_USERNAME}
-      - XNAT_DATASOURCE_PASSWORD=${XNAT_DATASOURCE_PASSWORD}
-    networks:
-      - app_network
+  # xnat-web:
+  #   image: ghcr.io/mdw-nl/mdw-xnat:1.9
+  #   environment:
+  #     XNAT_VERSION: ${XNAT_VERSION}
+  #     XNAT_SMTP_ENABLED: ${XNAT_SMTP_ENABLED}
+  #     XNAT_SMTP_HOSTNAME: ${XNAT_SMTP_HOSTNAME}
+  #     XNAT_SMTP_PORT: ${XNAT_SMTP_PORT}
+  #     XNAT_SMTP_AUTH: ${XNAT_SMTP_AUTH}
+  #     XNAT_SMTP_USERNAME: ${XNAT_SMTP_USERNAME}
+  #     XNAT_SMTP_PASSWORD: ${XNAT_SMTP_PASSWORD}
+  #     XNAT_DATASOURCE_DRIVER: ${XNAT_DATASOURCE_DRIVER}
+  #     XNAT_DATASOURCE_URL: ${XNAT_DATASOURCE_URL}
+  #     XNAT_DATASOURCE_USERNAME: ${XNAT_DATASOURCE_USERNAME}
+  #     XNAT_DATASOURCE_PASSWORD: ${XNAT_DATASOURCE_PASSWORD}
+  #     TOMCAT_XNAT_FOLDER: ${TOMCAT_XNAT_FOLDER}
+  #     XNAT_ROOT: ${XNAT_ROOT}
+  #     XNAT_HOME: ${XNAT_HOME}
+  #     XNAT_EMAIL: ${XNAT_EMAIL}
+  #     CATALINA_OPTS: -Xms${XNAT_MIN_HEAP} -Xmx${XNAT_MAX_HEAP} -Dxnat.home=${XNAT_HOME}
+  #   container_name: xnat-web
+  #   ports:
+  #     - 8080:8080
+  #     - 8104:8104
+  #   volumes:
+  #     - ./xnat/plugins:${XNAT_HOME}/plugins
+  #     - ./xnat-data/home/logs:${XNAT_HOME}/logs
+  #     - ./xnat-data/archive:${XNAT_ROOT}/archive
+  #     - ./xnat-data/build:${XNAT_ROOT}/build
+  #     - ./xnat-data/cache:${XNAT_ROOT}/cache
+  #     - /var/run/docker.sock:/var/run/docker.sock
+  #     - ./XNAT_configure:/XNAT_conf/XNAT_configure
+  #   depends_on:
+  #     - xnat-db
+  #   networks:
+  #     - app_network
 
 
-  xnat-nginx:
-    image: nginx:${NGINX_VERSION}
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf
-    ports:
-      - "80:80"
-    expose:
-      - "80"
-    depends_on:
-      - xnat-web
-    links:
-      - xnat-web
-    networks:
-      - app_network
+  # xnat-db:
+  #   image: postgres:${PG_VERSION}
+  #   container_name: "xnat-db"
+  #   expose:
+  #     - "5432"
+  #   volumes:
+  #     - ./postgres-data:/var/lib/postgresql/data
+  #     - ./postgres:/docker-entrypoint-initdb.d
+  #   environment:
+  #     - POSTGRES_PASSWORD=${XNAT_DATASOURCE_ADMIN_PASSWORD}
+  #     - POSTGRES_DB=${XNAT_DATASOURCE_NAME}
+  #     # variables for the sql script
+  #     - XNAT_DATASOURCE_USERNAME=${XNAT_DATASOURCE_USERNAME}
+  #     - XNAT_DATASOURCE_PASSWORD=${XNAT_DATASOURCE_PASSWORD}
+  #   networks:
+  #     - app_network
+
+
+  # xnat-nginx:
+  #   image: nginx:${NGINX_VERSION}
+  #   volumes:
+  #     - ./nginx.conf:/etc/nginx/nginx.conf
+  #   ports:
+  #     - "80:80"
+  #   expose:
+  #     - "80"
+  #   depends_on:
+  #     - xnat-web
+  #   links:
+  #     - xnat-web
+  #   networks:
+  #     - app_network
 
 networks:
   app_network:
     driver: bridge
+
+volumes:
+  postgres_data:

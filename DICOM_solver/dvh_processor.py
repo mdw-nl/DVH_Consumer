@@ -18,6 +18,7 @@ from .Config.global_var import INSERT_QUERY_DICOM_META, QUERY_UID, DELETE_END
 from datetime import datetime
 import os
 import pydicom
+from .PostrgresDVHdb import upload_pg
 
 
 def callback_tread(ch, method, properties, body, executor):
@@ -301,7 +302,7 @@ def adding_treatment_site(treatment_sites, data_folder):
     except Exception as e:
         logging.error(f"An error occurred adding the fake treatment site: {e}", exc_info=True)
 
-def calculate_dvh_curves(dicom_bundle, str_name=None,gdp=True, upload_to_xnat=False):
+def calculate_dvh_curves(dicom_bundle, str_name=None,gdp=True, upload_to_xnat=False, upload_to_pg=False):
 
     dvh_c = DVH_calculation()
     logging.info(f"RTstruct {dicom_bundle.rt_struct}")
@@ -317,6 +318,9 @@ def calculate_dvh_curves(dicom_bundle, str_name=None,gdp=True, upload_to_xnat=Fa
         """Save the data locally and send a message with rabbitmq to send_XNAT container"""
         xnat = upload_XNAT()
         xnat.run(output, dicom_bundle)
+    elif upload_to_pg:
+        pg = upload_pg()
+        pg.run(output, dicom_bundle)
     else:
         return_output(dicom_bundle.patient_id, output)
     logging.info(f"Calculation complete for {dicom_bundle.patient_id}")
@@ -397,5 +401,5 @@ if __name__ == "__main__":
         rt_ct=ct_file
     )
 
-    calculate_dvh_curves(dicom_bundle, str_name="Vessels_P", gdp=True, upload_to_xnat=True)
+    calculate_dvh_curves(dicom_bundle, str_name="Vessels_P", gdp=True, upload_to_xnat=False, upload_to_pg=True)
     # Calculate DVH curves

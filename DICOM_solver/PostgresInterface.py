@@ -1,8 +1,15 @@
 import logging
-
 import psycopg2
 from .Config.global_var import NUMBER_ATTEMPTS, RETRY_DELAY_IN_SECONDS
 from time import sleep
+import logging
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s"
+)
+
+
 
 
 class PostgresInterface:

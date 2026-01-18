@@ -18,7 +18,7 @@ class Consumer:
 
     def open_connection_rmq(self):
         """Establish connection"""
-        host, port, user, pwd = self.config_dict_rmq["localhost"], self.config_dict_rmq["port"] \
+        host, port, user, pwd = self.config_dict_rmq["host"], self.config_dict_rmq["port"] \
             , self.config_dict_rmq["username"], self.config_dict_rmq["password"]
 
         connection_string = f"amqp://{user}:{pwd}@{host}:{port}/"
