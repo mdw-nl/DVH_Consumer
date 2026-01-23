@@ -17,7 +17,7 @@ class DataAPI:
         except Exception as e:
             raise e
 
-    def dvh_api(self,structure_name):
+    def dvh_api(self, structure_name):
 
 
         verify = verify_full(self.df)
@@ -41,3 +41,7 @@ class DataAPI:
                         raise e
         else:
             return
+
+    def close(self):
+        if self.db:
+            self.db.disconnect()

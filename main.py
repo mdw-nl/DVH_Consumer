@@ -21,14 +21,17 @@ app = FastAPI()
 
 @app.get("/calculate_DVH", tags=["DVH"], summary="Calculate DVH")
 def calculate_dvh(patient_id: str, structure: str):
+    dp = None
     try:
         dp = DataAPI()
         dp.get_data_api(patient_id)
         res = dp.dvh_api(structure_name=structure)
         json_ld_data = res
-        print(json_ld_data)
     except Exception as e:
-        raise e
+        raise
+    finally:
+        if dp:
+            dp.close()
     return JSONResponse(content=json_ld_data, media_type="application/ld+json")
 
 
