@@ -17,7 +17,6 @@ class Config:
 
     def read_config_section(self, file, sect):
         self.config = file.get(sect, {})
-        logging.info(f"Config data : {self.config}")
 
 
 class RoiConfig:
