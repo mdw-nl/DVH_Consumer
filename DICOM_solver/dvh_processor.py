@@ -11,17 +11,10 @@ from .dicom_operation import collect_patients_dicom, verify_full
 
 def callback_tread(ch, method, properties, body, executor):
     study_uid = body.decode()
+    db = None
     try:
-        ch.basic_ack(delivery_tag=method.delivery_tag)
-    except Exception as e:
-        logging.error(f'Error while ack the message, Exception Message: {e}')
-        logging.warning(f"Exception Type: {type(e).__name__}")
-        logging.warning(traceback.format_exc())
-        raise e
-    logging.info(f"Message processed with uid: {study_uid}")
-    db = connect_db()
-    try:
-
+        logging.info(f"Message received with uid: {study_uid}")
+        db = connect_db()
         future = executor.submit(process_message, study_uid)
         future.result()
         logging.info("Process completed")
@@ -32,7 +25,7 @@ def callback_tread(ch, method, properties, body, executor):
             datetime.now()
         )
         db.execute_query(INSERT_QUERY_DICOM_META, params)
-        db.disconnect()
+        ch.basic_ack(delivery_tag=method.delivery_tag)
     except Exception as e:
         logging.warning(f"Error during calculation, Exception Message: {e}")
         logging.warning(f"Exception Type: {type(e).__name__}")
@@ -42,8 +35,13 @@ def callback_tread(ch, method, properties, body, executor):
             False,
             datetime.now()
         )
-        db.execute_query(INSERT_QUERY_DICOM_META, params)
-        raise e
+        if db:
+            db.execute_query(INSERT_QUERY_DICOM_META, params)
+        ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
+        raise
+    finally:
+        if db:
+            db.disconnect()
 
 
 def process_message(study_uid):
@@ -51,6 +49,7 @@ def process_message(study_uid):
     The function use the study_uid to retrieve the data from the database.
     Verify that for each patient we have all dicom required nad start the dvh calculation
     """
+    db = None
     try:
 
         logging.info(f"Delete is : {DELETE_END}")
@@ -91,12 +90,14 @@ def process_message(study_uid):
                         raise e
             else:
                 logging.info("No dicom bundles found for the study uid")
-        db.disconnect()
     except Exception as e:
         logging.warning(f"Exception Type: {type(e).__name__}")
         logging.warning(f"Exception Message: {e}")
         logging.warning(traceback.format_exc())
-        raise e
+        raise
+    finally:
+        if db:
+            db.disconnect()
 
 
 def calculate_dvh_curves(dicom_bundle, str_name=None, gdp=True):
