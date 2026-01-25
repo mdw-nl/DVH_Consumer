@@ -9,7 +9,7 @@ from .DVH.dicom_bundle import DicomBundle
 from dicompylercore.dicomparser import DicomParser
 from DICOM_solver.roi_lookup_service import set_standarized_names, get_standarized_names
 from DICOM_solver.roi_handler import roi_list, roi_operation, combine_rois, check_if_roi_exist
-from DICOM_solver.upload_XNAT import upload_XNAT
+from DICOM_solver.XNAT_service import upload_XNAT
 import re
 from rt_utils import RTStructBuilder
 from DICOM_solver.roi_handler import combine_rois
@@ -401,5 +401,5 @@ if __name__ == "__main__":
         rt_ct=ct_file
     )
 
-    calculate_dvh_curves(dicom_bundle, str_name="Vessels_P", gdp=True, upload_to_xnat=False, upload_to_pg=True)
+    calculate_dvh_curves(dicom_bundle, str_name="Kidney - right_P", gdp=True, upload_to_xnat=False, upload_to_pg=True)
     # Calculate DVH curves

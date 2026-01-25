@@ -3,9 +3,9 @@ from .config_handler import Config, read_config
 import pydicom
 
 
-# This function is to create tables when docker compose up 
 def create_dvh_tables(db: PostgresInterface):
-
+    "This function is to create tables when docker compose up "
+    
     db.create_table(
         "dvh_result",
         {

@@ -30,9 +30,6 @@ xnat:
   queue_name: "xnat"
   send_queue: "xnat"
 
-
-
-
 dvh-calculations:
   -
     P-LUNG:
