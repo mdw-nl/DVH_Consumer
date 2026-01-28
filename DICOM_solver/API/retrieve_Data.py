@@ -19,7 +19,6 @@ class DataAPI:
 
     def dvh_api(self, structure_name):
 
-
         verify = verify_full(self.df)
         if verify:
             dicom_bundles = collect_patients_dicom(self.df)

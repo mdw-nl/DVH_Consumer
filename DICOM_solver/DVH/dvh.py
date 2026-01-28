@@ -12,10 +12,10 @@ def prepare_output(dvh_points, structure, calc_dvh, dict_value_v, list_value_d):
     structOut = {
         "@id": id_data,
         "structureName": structure["name"],
-        "min": {"@id": f"{id_data}/min", "unit": "Gray", "value": calc_dvh.min},
-        "mean": {"@id": f"{id_data}/mean", "unit": "Gray", "value": calc_dvh.mean},
-        "max": {"@id": f"{id_data}/max", "unit": "Gray", "value": calc_dvh.max},
-        "volume": {"@id": f"{id_data}/volume", "unit": "cc", "value": int(calc_dvh.volume)},
+        "min": {"@id": f"{id_data}/min", "unit": "Gray", "value": float(calc_dvh.min)},
+        "mean": {"@id": f"{id_data}/mean", "unit": "Gray", "value": float(calc_dvh.mean)},
+        "max": {"@id": f"{id_data}/max", "unit": "Gray", "value": float(calc_dvh.max)},
+        "volume": {"@id": f"{id_data}/volume", "unit": "cc", "value": float(calc_dvh.volume)},
         #"D2": {"@id": f"{id_data}/D2", "unit": "Gray", "value": float(calc_dvh.D2.value)},
         #"D50": {"@id": f"{id_data}/D50", "unit": "Gray", "value": float(calc_dvh.D50.value)},
         #"D95": {"@id": f"{id_data}/D95", "unit": "Gray", "value": float(calc_dvh.D95.value)},
@@ -29,12 +29,12 @@ def prepare_output(dvh_points, structure, calc_dvh, dict_value_v, list_value_d):
     logging.info(f"Preparing additional DVH values for output...{dict_value_v}")
     for k, v in dict_value_v.items():
         logging.debug(f"Processing key: {k} with value: {v}")
-        structOut[k] = {"@id": f"{id_data}/{k}", "unit": "Gray", "value": v}
+        structOut[k] = {"@id": f"{id_data}/{k}", "unit": "Gray", "value": float(v)}
         logging.debug(f"Added {k} with value {v} to output.")
 
     for k in list_value_d:
         logging.debug(f"Processing {k}")
-        structOut[k] = {"@id": f"{id_data}/{k}", "unit": "Gray", "value": getattr(calc_dvh, k).value}
+        structOut[k] = {"@id": f"{id_data}/{k}", "unit": "Gray", "value": float(getattr(calc_dvh, k).value)}
         logging.debug(f"Added {k} ")
 
 
