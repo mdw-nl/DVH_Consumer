@@ -37,7 +37,7 @@ def callback_tread(ch, method, properties, body, executor):
         )
         if db:
             db.execute_query(INSERT_QUERY_DICOM_META, params)
-        ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
+        ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
         raise
     finally:
         if db:
