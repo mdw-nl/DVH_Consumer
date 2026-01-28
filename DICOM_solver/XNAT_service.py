@@ -166,21 +166,20 @@ class XNATRetriever:
         for entry in entries:
             sop_uid = entry.get("@UID")
             file_uri = entry.get("@URI")
-            
-            if sop_uid != SOPinstanceUID:
-                return False
-            
+
             if not sop_uid or not file_uri:
                 continue
 
-            result = {
-                "sop_uid": sop_uid,
-                "file_uri": file_uri,
-                "filename": entry.get("@ID"),
-                "format": entry.get("@format"),
-            }
+            if sop_uid == SOPinstanceUID:
+                return {
+                    "sop_uid": sop_uid,
+                    "file_uri": file_uri,
+                    "filename": entry.get("@ID"),
+                    "format": entry.get("@format"),
+                }
 
-        return result
+        # No matching SOPInstanceUID found
+        return False
     
     def download_dicom_to_file(self, url, out_dir, filename):
         """Download a DICOM file from XNAT"""
@@ -230,14 +229,14 @@ class XNATRetriever:
 
             # Iterate through each scan looking for RTDOSE series
             for scan in scans:
-                if scan["series_description"] != "Eclipse Doses": 
-                    continue
-                
                 # Build the URL to the DICOM resource for this scan
                 uri = scan["URI"]
                 url = self.base_url + uri + "/resources/DICOM"
-                
-                catalog = self._get(url)
+                    
+                try:
+                    catalog = self._get(url)
+                except Exception as e:
+                    continue
                 
                 uid = self.extract_and_check_sopinstance_entries(catalog, SOPinstanceUID)
                 if uid is False:  # Skip if SOPInstanceUID not found
@@ -251,107 +250,66 @@ class XNATRetriever:
                 # Download the RTDOSE file to the local directory
                 self.download_dicom_to_file(donwload_url, folder_path, file_name)
                 
-            return os.path.join(folder_path, file_name)
+                return os.path.join(folder_path, file_name)
+        raise FileNotFoundError(f"SOPInstanceUID {SOPinstanceUID} not found for this patient.")    
         
-        
-    def get_rtplan(self, rtdose_path):
+    def download_by_sop(self, sop):
         """Download the RTPLAN file corresponding to a given RTDOSE."""
         # Read RTDOSE to get the referenced RTPLAN SOPInstanceUID
-        ds = pydicom.dcmread(rtdose_path)
-        try:
-            rtplan_sop = ds.ReferencedRTPlanSequence[0].ReferencedSOPInstanceUID
-        except (AttributeError, IndexError):
-            raise ValueError("RTDOSE does not reference any RTPLAN.")
 
         for patient_url in self.patient_urls:
             scans = self.get_scans(patient_url)
 
-            # Filter scans for RTPLAN series
-            rtplan_scans = [scan for scan in scans
-            if scan.get("series_description", "").lower() == "aria radonc plans"]
-
-            for scan in rtplan_scans:
+            for scan in scans:
                 scan_uri = scan["URI"]
 
                 # Fetch available resources for this scan
                 resources_url = f"{self.base_url}{scan_uri}/resources"
                 resources_catalog = self._get(resources_url)
                 resources = resources_catalog.get("ResultSet", {}).get("Result", [])
-
-                # Pick the first resource (often labeled 'secondary' for RTPLAN)
-                resource_uri = resources[0]["content"]
-                dicom_resource_url = f"{self.base_url}{scan_uri}/resources/{resource_uri}"
-
-                # Fetch DICOM catalog for the resource
-                catalog_dict = self._get(dicom_resource_url)
-
-                # Look for the file matching the SOPInstanceUID
-                uid_entry = self.extract_and_check_sopinstance_entries(catalog_dict, rtplan_sop)
+                for resource in resources:
+                    resource_uri = resource["content"]
+                    dicom_resource_url = f"{self.base_url}{scan_uri}/resources/{resource_uri}"
+                    try:
+                        catalog_dict = self._get(dicom_resource_url)
+                    except Exception as e:
+                        continue
+                    
+                    uid_entry = self.extract_and_check_sopinstance_entries(catalog_dict, sop)
                 
-                if not uid_entry:
-                    continue
-
-                # Build download URL and save locally
-                download_url = f"{dicom_resource_url}/files/{uid_entry['file_uri']}"
-                filename = f"rt_plan_{uid_entry['filename']}"
-                folder_path = "data/xnat_listener"
-                
-                self.download_dicom_to_file(download_url, folder_path, filename)
-                return os.path.join(folder_path, filename)
+                    if not uid_entry:
+                        continue
+                    # Build download URL and save locally
+                    download_url = f"{dicom_resource_url}/files/{uid_entry['file_uri']}"
+                    filename = f"{uid_entry['filename']}"
+                    folder_path = "data/xnat_listener"
+                    
+                    self.download_dicom_to_file(download_url, folder_path, filename)
+                    return os.path.join(folder_path, filename)
+        raise FileNotFoundError(f"SOPInstanceUID {sop} not found for this patient.")
             
-    def get_rtstruct(self, rtplan_path):
-        """Retrieve and download the RTSTRUCT file corresponding to a given RTPLAN."""
-        
-        # Read RTPLAN to get the referenced RTSTRUCT SOPInstanceUID
+
+
+    def run(self, patient_name, patient_id, dose_SOPinstanceUID):
+        self.check_patient_location(patient_name, patient_id)
+
+        rtdose_path = self.get_rtdose(dose_SOPinstanceUID)
+
+        ds_dose = pydicom.dcmread(rtdose_path)
+        try:
+            rtplan_sop = ds_dose.ReferencedRTPlanSequence[0].ReferencedSOPInstanceUID
+        except (AttributeError, IndexError):
+            raise ValueError("RTDOSE does not reference any RTPLAN.")
+
+        rtplan_path = self.download_by_sop(rtplan_sop)
+
         ds_plan = pydicom.dcmread(rtplan_path)
         try:
             rtstruct_sop = ds_plan.ReferencedStructureSetSequence[0].ReferencedSOPInstanceUID
         except (AttributeError, IndexError):
             raise ValueError("RTPLAN does not reference any RTSTRUCT.")
 
-        # Loop over all patient experiment URLs
-        for patient_url in self.patient_urls:
-            scans = self.get_scans(patient_url)
-
-            # Filter scans for RTSTRUCT series
-            rtstruct_scans = [
-                scan for scan in scans
-                if scan.get("series_description", "").lower() == "aria radonc structure sets"
-            ]
-
-            for scan in rtstruct_scans:
-                scan_uri = scan["URI"]
-
-                # Fetch available resources for this scan
-                resources_url = f"{self.base_url}{scan_uri}/resources"
-                resources_catalog = self._get(resources_url)
-                resources = resources_catalog.get("ResultSet", {}).get("Result", [])
-
-                # Pick the first resource (commonly 'secondary')
-                resource_uri = resources[0]["content"]
-                dicom_resource_url = f"{self.base_url}{scan_uri}/resources/{resource_uri}"
-
-                catalog_dict = self._get(dicom_resource_url)
-
-                uid_entry = self.extract_and_check_sopinstance_entries(catalog_dict, rtstruct_sop)
-                if not uid_entry:
-                    print(f"SOPInstanceUID {rtstruct_sop} not found in scan {scan_uri}")
-                    continue
-
-                # Build download URL and save locally
-                download_url = f"{dicom_resource_url}/files/{uid_entry['file_uri']}"
-                filename = f"rtstruct_{uid_entry['filename']}"
-                folder_path = "data/xnat_listener"
-
-                self.download_dicom_to_file(download_url, folder_path, filename)
-                return os.path.join(folder_path, filename)
-
-
-    def run(self, patient_name, patient_id, dose_SOPinstanceUID):
-        self.check_patient_location(patient_name, patient_id)
-        rtdose_path = self.get_rtdose(dose_SOPinstanceUID)
-        rtplan_path = self.get_rtplan(rtdose_path)
-        self.get_rtstruct(rtplan_path)
+        rtstruct_path = self.download_by_sop(rtstruct_sop)
 
         
 if __name__ == "__main__":
@@ -360,4 +318,3 @@ if __name__ == "__main__":
     patient_id = "99999_8088316119225601241627216725805872478376234007905444525746"
     SOPinstanceUID = "99999.1254976680351246889122584535917886712943150884553757806011"
     retriever.run(patient_name, patient_id, SOPinstanceUID)
-
