@@ -1,6 +1,7 @@
 from .DVH.dvh import DVH_calculation
 import logging
 import traceback
+import threading
 from .DVH.output import return_output
 from .Config.global_var import INSERT_QUERY_DICOM_META, DELETE_END
 from datetime import datetime
@@ -9,23 +10,35 @@ from .utilities import connect_db, get_all_uid
 from .dicom_operation import collect_patients_dicom, verify_full
 
 
-def callback_tread(ch, method, properties, body, executor):
+def callback_tread(ch, method, properties, body, executor, connection):
     study_uid = body.decode()
-    db = None
-    try:
-        logging.info(f"Message received with uid: {study_uid}")
-        db = connect_db()
-        future = executor.submit(process_message, study_uid)
-        future.result()
-        logging.info("Process completed")
+    logging.info(f"Message received with uid: {study_uid}")
+    executor.submit(process_message_async, study_uid, method.delivery_tag, ch, connection)
 
+
+def process_message_async(study_uid, delivery_tag, channel, connection):
+    db = None
+    dicom_bundles = []
+    try:
+        dicom_bundles = process_message(study_uid)
+        db = connect_db()
         params = (
             study_uid,
             True,
             datetime.now()
         )
         db.execute_query(INSERT_QUERY_DICOM_META, params)
-        ch.basic_ack(delivery_tag=method.delivery_tag)
+        if _ack_message(connection, channel, delivery_tag):
+            if DELETE_END and dicom_bundles:
+                logging.info(f"Deleting patient data from the database, {DELETE_END}")
+                try:
+                    for dicom_bundle in dicom_bundles:
+                        dicom_bundle.rm_data_patient()
+                except Exception as e:
+                    logging.warning(f"Error during delete of patient data, Exception Message: {e}")
+                    logging.warning(f"Exception Type: {type(e).__name__}")
+                    logging.warning(traceback.format_exc())
+                    raise
     except Exception as e:
         logging.warning(f"Error during calculation, Exception Message: {e}")
         logging.warning(f"Exception Type: {type(e).__name__}")
@@ -35,13 +48,48 @@ def callback_tread(ch, method, properties, body, executor):
             False,
             datetime.now()
         )
-        if db:
-            db.execute_query(INSERT_QUERY_DICOM_META, params)
-        ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
-        raise
+        if db is None:
+            db = connect_db()
+        db.execute_query(INSERT_QUERY_DICOM_META, params)
+        _nack_message(connection, channel, delivery_tag)
     finally:
         if db:
             db.disconnect()
+
+
+def _ack_message(connection, channel, delivery_tag):
+    ack_event = threading.Event()
+    ack_result = {"success": False}
+
+    def _ack():
+        try:
+            channel.basic_ack(delivery_tag=delivery_tag)
+            ack_result["success"] = True
+        except Exception as e:
+            logging.warning(f"Error acknowledging message, Exception Message: {e}")
+            logging.warning(f"Exception Type: {type(e).__name__}")
+            logging.warning(traceback.format_exc())
+        finally:
+            ack_event.set()
+
+    connection.add_callback_threadsafe(_ack)
+    ack_event.wait(timeout=10)
+    return ack_result["success"]
+
+
+def _nack_message(connection, channel, delivery_tag):
+    def _nack():
+        try:
+            if channel.is_open:
+                channel.basic_nack(delivery_tag=delivery_tag, requeue=False)
+            else:
+                logging.warning("Channel is closed; unable to nack message.")
+        except Exception as e:
+            logging.warning(f"Error nacking message, Exception Message: {e}")
+            logging.warning(f"Exception Type: {type(e).__name__}")
+            logging.warning(traceback.format_exc())
+
+    connection.add_callback_threadsafe(_nack)
 
 
 def process_message(study_uid):
@@ -50,6 +98,7 @@ def process_message(study_uid):
     Verify that for each patient we have all dicom required nad start the dvh calculation
     """
     db = None
+    dicom_bundles = []
     try:
 
         logging.info(f"Delete is : {DELETE_END}")
@@ -76,18 +125,6 @@ def process_message(study_uid):
                         logging.warning(f"Exception Type: {type(e).__name__}")
                         logging.warning(traceback.format_exc())
                         raise e
-                logging.info(DELETE_END)
-                if DELETE_END:
-                    logging.info(f"Deleting patient data from the database, {DELETE_END}")
-                    try:
-
-                        for dicom_bundle in dicom_bundles:
-                            dicom_bundle.rm_data_patient()
-                    except Exception as e:
-                        logging.warning(f"Error during delete of patient data, Exception Message: {e}")
-                        logging.warning(f"Exception Type: {type(e).__name__}")
-                        logging.warning(traceback.format_exc())
-                        raise e
             else:
                 logging.info("No dicom bundles found for the study uid")
     except Exception as e:
@@ -98,6 +135,7 @@ def process_message(study_uid):
     finally:
         if db:
             db.disconnect()
+    return dicom_bundles
 
 
 def calculate_dvh_curves(dicom_bundle, str_name=None, gdp=True):
