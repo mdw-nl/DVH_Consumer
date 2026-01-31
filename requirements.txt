@@ -10,3 +10,4 @@ dicompyler-core
 requests
 uvicorn
 fastapi
+xmltodict

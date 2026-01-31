@@ -226,7 +226,6 @@ class XNATRetriever:
         # Loop over all patient experiment URLs where the patient exists
         for url in self.patient_urls:
             scans = self.get_scans(url)
-
             # Iterate through each scan looking for RTDOSE series
             for scan in scans:
                 # Build the URL to the DICOM resource for this scan
@@ -289,6 +288,62 @@ class XNATRetriever:
         raise FileNotFoundError(f"SOPInstanceUID {sop} not found for this patient.")
             
 
+    def extract_ct_sop_uids_from_rtstruct(self, ds_rtstruct):
+        """Return a set of CT SOPInstanceUIDs referenced by the RTSTRUCT."""
+        ct_sops = set()
+
+        try:
+            for ref_for in ds_rtstruct.ReferencedFrameOfReferenceSequence:
+                for ref_study in ref_for.RTReferencedStudySequence:
+                    for ref_series in ref_study.RTReferencedSeriesSequence:
+                        for img in ref_series.ContourImageSequence:
+                            ct_sops.add(img.ReferencedSOPInstanceUID)
+        except AttributeError:
+            raise ValueError("RTSTRUCT does not contain ContourImageSequence references")
+
+        if not ct_sops:
+            raise ValueError("No CT SOPInstanceUIDs found in RTSTRUCT")
+
+        return ct_sops
+
+    def download_ct_series_from_rtstruct(self, rtstruct_path):
+        ds_struct = pydicom.dcmread(rtstruct_path)
+        ct_sops = self.extract_ct_sop_uids_from_rtstruct(ds_struct)
+
+        downloaded = []
+
+        for patient_url in self.patient_urls:
+            scans = self.get_scans(patient_url)
+
+            for scan in scans:
+                scan_uri = scan["URI"]
+                dicom_resource_url = f"{self.base_url}{scan_uri}/resources/DICOM"
+
+                try:
+                    catalog = self._get(dicom_resource_url)
+                except Exception:
+                    continue
+                
+                for sop in ct_sops:
+                    uid_entry = self.extract_and_check_sopinstance_entries(catalog, sop)
+                    if not uid_entry:
+                        continue
+
+                    download_url = f"{dicom_resource_url}/files/{uid_entry['file_uri']}"
+                    out_dir = "data/xnat_listener/ct"
+                    filename = uid_entry["filename"]
+
+                    path = self.download_dicom_to_file(download_url, out_dir, filename)
+                    downloaded.append(path)
+
+            if len(downloaded) == len(ct_sops):
+                return True
+
+        if not downloaded:
+            raise FileNotFoundError("No CT images found for RTSTRUCT")
+
+        return False
+
 
     def run(self, patient_name, patient_id, dose_SOPinstanceUID):
         self.check_patient_location(patient_name, patient_id)
@@ -310,6 +365,7 @@ class XNATRetriever:
             raise ValueError("RTPLAN does not reference any RTSTRUCT.")
 
         rtstruct_path = self.download_by_sop(rtstruct_sop)
+        self.download_ct_series_from_rtstruct(rtstruct_path)
 
         
 if __name__ == "__main__":
