@@ -15,17 +15,17 @@ def callback_tread(ch, method, properties, body, executor):
     try:
         logging.info(f"Message received with uid: {study_uid}")
         db = connect_db()
+        ch.basic_ack(delivery_tag=method.delivery_tag, )
         future = executor.submit(process_message, study_uid)
         future.result()
         logging.info("Process completed")
-
         params = (
             study_uid,
             True,
             datetime.now()
         )
         db.execute_query(INSERT_QUERY_DICOM_META, params)
-        ch.basic_ack(delivery_tag=method.delivery_tag)
+
     except Exception as e:
         logging.warning(f"Error during calculation, Exception Message: {e}")
         logging.warning(f"Exception Type: {type(e).__name__}")
@@ -37,9 +37,9 @@ def callback_tread(ch, method, properties, body, executor):
         )
         if db:
             db.execute_query(INSERT_QUERY_DICOM_META, params)
-        ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
         raise
     finally:
+
         if db:
             db.disconnect()
 
@@ -54,12 +54,10 @@ def process_message(study_uid):
 
         logging.info(f"Delete is : {DELETE_END}")
         db = connect_db()
-
         if study_uid is None:
             raise Exception(f"Study uid is : {study_uid}")
         logging.info(f"The study uid is :{study_uid}")
         result = get_all_uid(db, study_uid)
-
         verified = verify_full(result)
         if verified:
             logging.info(f"result is :{result}")
@@ -69,7 +67,6 @@ def process_message(study_uid):
                     logging.info(f"Patients to analyze:{len(dicom_bundles)} ")
                     logging.info(f"{dicom_bundles[0]}")
                     try:
-
                         calculate_dvh_curves(dicom_bundle)
                     except Exception as e:
                         logging.warning(f"Error during calculation, Exception Message: {e}")
