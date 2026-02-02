@@ -200,7 +200,7 @@ class XNATRetriever:
 
         return out_path
 
-    def check_patient_location(self,  patient_name, patient_id):
+    def check_patient_location(self,  patient_name, study_instance_uid):
         """Return a list of all the urls where the patient name and is found in xnat"""
         self.patient_urls = []
         
@@ -213,15 +213,15 @@ class XNATRetriever:
 
             experiments = self.get_experiments(subjects[patient_name])
 
-            if patient_id not in experiments:
+            if study_instance_uid not in experiments:
                 continue
             
-            url = experiments[patient_id]
+            url = experiments[study_instance_uid]
             self.patient_urls.append(url)
 
     
     def get_rtdose(self, SOPinstanceUID):
-        """Download the RTDOSE based on patient_name, patient_id, and SOPInstanceUID from XNAT"""
+        """Download the RTDOSE based on patient_name, study_instance_uid, and SOPInstanceUID from XNAT"""
 
         # Loop over all patient experiment URLs where the patient exists
         for url in self.patient_urls:
@@ -241,7 +241,7 @@ class XNATRetriever:
                 if uid is False:  # Skip if SOPInstanceUID not found
                     continue
                 
-                folder_path = "data/xnat_listener"
+                folder_path = self.current_out_dir
                 file_name = f"rt_dose_{uid['filename']}"
                 
                 donwload_url = f"{url}/files/{uid['file_uri']}"
@@ -281,7 +281,7 @@ class XNATRetriever:
                     # Build download URL and save locally
                     download_url = f"{dicom_resource_url}/files/{uid_entry['file_uri']}"
                     filename = f"{uid_entry['filename']}"
-                    folder_path = "data/xnat_listener"
+                    folder_path = self.current_out_dir
                     
                     self.download_dicom_to_file(download_url, folder_path, filename)
                     return os.path.join(folder_path, filename)
@@ -330,7 +330,7 @@ class XNATRetriever:
                         continue
 
                     download_url = f"{dicom_resource_url}/files/{uid_entry['file_uri']}"
-                    out_dir = "data/xnat_listener/ct"
+                    out_dir = os.path.join(self.current_out_dir, "ct")
                     filename = uid_entry["filename"]
 
                     path = self.download_dicom_to_file(download_url, out_dir, filename)
@@ -345,32 +345,48 @@ class XNATRetriever:
         return False
 
 
-    def run(self, patient_name, patient_id, dose_SOPinstanceUID):
-        self.check_patient_location(patient_name, patient_id)
+    def run(self, API, modality):
 
-        rtdose_path = self.get_rtdose(dose_SOPinstanceUID)
+        url = API
+        payload = {"modality": modality}
+        headers = {"Content-Type": "application/json"}
 
-        ds_dose = pydicom.dcmread(rtdose_path)
-        try:
-            rtplan_sop = ds_dose.ReferencedRTPlanSequence[0].ReferencedSOPInstanceUID
-        except (AttributeError, IndexError):
-            raise ValueError("RTDOSE does not reference any RTPLAN.")
+        response = requests.post(url, json=payload, headers=headers)
+        response_data = response.json()
+        
+        for entry in response_data.get("new_sop_instances", []):
+            sop_instance_uid = entry["sop_instance_uid"]
+            study_instance_uid = entry["study_instance_uid"]
+            xnat_experiment_label = study_instance_uid.replace(".", "_")
+            patient_name = entry["patient_name"]
+        
+            self.current_out_dir = os.path.join("data/xnat_listener", sop_instance_uid)
+            os.makedirs(self.current_out_dir, exist_ok=True)
 
-        rtplan_path = self.download_by_sop(rtplan_sop)
+            self.check_patient_location(patient_name, xnat_experiment_label)
+            rtdose_path = self.get_rtdose(sop_instance_uid)
 
-        ds_plan = pydicom.dcmread(rtplan_path)
-        try:
-            rtstruct_sop = ds_plan.ReferencedStructureSetSequence[0].ReferencedSOPInstanceUID
-        except (AttributeError, IndexError):
-            raise ValueError("RTPLAN does not reference any RTSTRUCT.")
+            ds_dose = pydicom.dcmread(rtdose_path)
+            try:
+                rtplan_sop = ds_dose.ReferencedRTPlanSequence[0].ReferencedSOPInstanceUID
+            except (AttributeError, IndexError):
+                raise ValueError("RTDOSE does not reference any RTPLAN.")
 
-        rtstruct_path = self.download_by_sop(rtstruct_sop)
-        self.download_ct_series_from_rtstruct(rtstruct_path)
+            rtplan_path = self.download_by_sop(rtplan_sop)
+
+            ds_plan = pydicom.dcmread(rtplan_path)
+            try:
+                rtstruct_sop = ds_plan.ReferencedStructureSetSequence[0].ReferencedSOPInstanceUID
+            except (AttributeError, IndexError):
+                raise ValueError("RTPLAN does not reference any RTSTRUCT.")
+
+            rtstruct_path = self.download_by_sop(rtstruct_sop)
+            self.download_ct_series_from_rtstruct(rtstruct_path)
 
         
 if __name__ == "__main__":
     retriever = XNATRetriever(base_url="http://localhost:8080", username="admin", password="admin")
-    patient_name = "SEDI_TEST001"
-    patient_id = "99999_8088316119225601241627216725805872478376234007905444525746"
-    SOPinstanceUID = "99999.1254976680351246889122584535917886712943150884553757806011"
-    retriever.run(patient_name, patient_id, SOPinstanceUID)
+    # patient_name = "SEDI_TEST001"
+    # study_instance_uid = "99999_8088316119225601241627216725805872478376234007905444525746"
+    # SOPinstanceUID = "99999.1254976680351246889122584535917886712943150884553757806011"
+    retriever.run("http://localhost:9000/sop_instance_uids", "RTDOSE")
