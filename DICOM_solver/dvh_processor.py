@@ -241,8 +241,8 @@ def collect_patients_dicom(df: pd.DataFrame):
     for patient_id in list_patient:
         df_o_p: pd.DataFrame = df.loc[df["patient_id"] == patient_id]
         ref_rt_plan_uid_list = df_o_p["referenced_rt_plan_uid"].values.tolist()
-        rt_struct = df_o_p.loc[df["modality"] == "RTSTRUCT"]["file_path"].values.tolist()
-        ct = df_o_p.loc[df["modality"] == "CT"]["file_path"].values.tolist()
+        rt_struct = df_o_p.loc[df_o_p["modality"] == "RTSTRUCT"]["file_path"].values.tolist()
+        ct = df_o_p.loc[df_o_p["modality"] == "CT"]["file_path"].values.tolist()
         ref_rt_plan_uid_list = [uid for uid in ref_rt_plan_uid_list if uid != "UNKNOWN"]
         dicom_bundles = link_rt_plan_dose(df_o_p, ref_rt_plan_uid_list, patient_id, ct, rt_struct)
         result_list.extend(dicom_bundles)
