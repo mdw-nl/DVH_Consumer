@@ -157,7 +157,7 @@ def get_all_uid(db, uid):
     """
     query = f"Select * from public.dicom_insert where study_instance_uid ='{uid}';"
     try:
-        df = pd.read_sql_query(QUERY_UID, db.conn,params=(uid,))
+        df = pd.read_sql_query(QUERY_UID, db.conn, params=(uid,))
     except Exception as e:
         raise e
     return df
@@ -175,7 +175,7 @@ def check_if_all_in(list_v):
     return value_
 
 
-def verify_full(df: pd.DataFrame)-> bool:
+def verify_full(df: pd.DataFrame) -> bool:
     """
 
     :param df:
@@ -288,22 +288,22 @@ def adding_treatment_site(treatment_sites, data_folder):
             if file.endswith(".dcm"):
                 file_path = os.path.join(data_folder, file)
                 ds = pydicom.dcmread(file_path)
-                
+
                 # if treatment_sites is a dict, look up by PatientID
                 if isinstance(treatment_sites, dict):
                     site = treatment_sites.get(ds.PatientID, "UNKNOWN")
                 else:
                     # otherwise use the string directly
                     site = treatment_sites
-                
+
                 ds.BodyPartExamined = site
                 ds.save_as(file_path)
         logging.info("Added the treatment site")
     except Exception as e:
         logging.error(f"An error occurred adding the fake treatment site: {e}", exc_info=True)
 
-def calculate_dvh_curves(dicom_bundle, str_name=None,gdp=True, upload_to_xnat=False, upload_to_pg=False):
 
+def calculate_dvh_curves(dicom_bundle, str_name=None, gdp=True, upload_to_xnat=False, upload_to_pg=False):
     dvh_c = DVH_calculation()
     logging.info(f"RTstruct {dicom_bundle.rt_struct}")
     logging.info(f"RTPlan :{dicom_bundle.rt_plan}")
@@ -354,52 +354,3 @@ def combine(dicom_bundle: DicomBundle):
     dicom_bundle.rt_struct = rt_struct
     return dicom_bundle
 
-if __name__ == "__main__":
-    dicom_folder = "DICOM_data"  # Folder containing all DICOMs for one patient
-
-    # Add a fake treatment site when uploaded to xnat this is needed
-    adding_treatment_site("LUNG", dicom_folder)
-    
-    # Make sure all the files are in a dicom bundle
-    all_files = [os.path.join(dicom_folder, f) for f in os.listdir(dicom_folder) if f.endswith(".dcm")]
-
-    ct_files = []
-    rt_plan_files = []
-    rt_struct_files = []
-    rt_dose_files = []
-
-    for f in all_files:
-        try:
-            ds = pydicom.dcmread(f, stop_before_pixels=True)
-            modality = ds.Modality.upper()
-            if modality == "CT":
-                ct_files.append(f)
-            elif modality == "RTPLAN":
-                rt_plan_files.append(f)
-            elif modality == "RTSTRUCT":
-                rt_struct_files.append(f)
-            elif modality == "RTDOSE":
-                rt_dose_files.append(f)
-        except Exception as e:
-            logging.warning(f"Skipping file {f}, not a valid DICOM: {e}")
-
-    rt_plan_file = rt_plan_files[0].replace("\\", "/") if rt_plan_files else None
-    rt_struct_file = rt_struct_files[0].replace("\\", "/") if rt_struct_files else None
-    ct_file = ct_files[0].replace("\\", "/") if ct_files else None
-    rt_dose_files = [f.replace("\\", "/") for f in rt_dose_files]
-
-    # Verify we have required files
-    if not (ct_file and rt_plan_file and rt_struct_file):
-        raise Exception("Missing required DICOM files: CT, RTPLAN, or RTSTRUCT.")
-
-    # Create the DicomBundle
-    dicom_bundle = DicomBundle(
-        patient_id="Patient1",
-        rt_plan=rt_plan_file,
-        rt_struct=rt_struct_file,
-        rt_dose=rt_dose_files,
-        rt_ct=ct_file
-    )
-
-    calculate_dvh_curves(dicom_bundle, str_name="Kidney - right_P", gdp=True, upload_to_xnat=False, upload_to_pg=True)
-    # Calculate DVH curves
