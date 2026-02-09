@@ -5,12 +5,12 @@ import pydicom
 
 def create_dvh_tables(db: PostgresInterface):
     "This function is to create tables when docker compose up "
-    
+
     db.create_table(
         "dvh_result",
         {
             "result_id": "SERIAL PRIMARY KEY",
-            "json_id": "TEXT UNIQUE NOT NULL",       # store your ROI @id
+            "json_id": "TEXT UNIQUE NOT NULL",  # store your ROI @id
             "dose_bins": "DOUBLE PRECISION[] NOT NULL",
             "volume_bins": "DOUBLE PRECISION[] NOT NULL",
             "D2": "DOUBLE PRECISION",
@@ -35,11 +35,12 @@ def create_dvh_tables(db: PostgresInterface):
         }
     )
 
+
 # A class to upload actual data to postgress
 class upload_pg:
     def __init__(self):
-        file_data = read_config()
-        self.postgres_config = file_data.get("postgres", {})
+        file_d = read_config()
+        self.postgres_config = file_d.get("postgres", {})
 
     def SOP_UID_rtose(self, dicom_bundle):
         """Get SOP UID for rtdose"""
@@ -48,13 +49,13 @@ class upload_pg:
 
     def extract_roi_dvh(self, roi_dvh):
         """Extract all relevant info from a single ROI DVH dictionary."""
-        
+
         roi_name = roi_dvh["structureName"]
         json_id = roi_dvh["@id"]
 
         d_points = [pt["d_point"] for pt in roi_dvh["dvh_curve"]["dvh_points"]]
         v_points = [pt["v_point"] for pt in roi_dvh["dvh_curve"]["dvh_points"]]
-        
+
         D2 = roi_dvh["D2"]["value"]
         D50 = roi_dvh["D50"]["value"]
         D95 = roi_dvh["D95"]["value"]
@@ -100,9 +101,9 @@ class upload_pg:
 
         for roi_dvh in output:
             roi_data = self.extract_roi_dvh(roi_dvh)
-            
+
             # If the roi_key has been used before it skips so there will be no double entries
-            roi_key = (roi_data["json_id"], sop_uid)  
+            roi_key = (roi_data["json_id"], sop_uid)
             if roi_key in inserted_rois:
                 continue
             inserted_rois.add(roi_key)
@@ -164,12 +165,12 @@ class upload_pg:
 
 
 # This script is run everytime docker compose up to create the correct tables
-if __name__ == "__main__":
-    
-    file_data = read_config()
-    postgres_config = file_data.get("postgres", {})
-    
-    pg = PostgresInterface(postgres_config["host"], postgres_config["db"], postgres_config["username"], postgres_config["password"], postgres_config["port"])
-    pg.connect()
-    create_dvh_tables(pg)
-    pg.disconnect()
+#if __name__ == "__main__":
+#    file_data = read_config()
+#    postgres_config = file_data.get("postgres", {})
+#
+#    pg = PostgresInterface(postgres_config["host"], postgres_config["db"], postgres_config["username"],
+#                           postgres_config["password"], postgres_config["port"])
+#    pg.connect()
+#    create_dvh_tables(pg)
+#    pg.disconnect()

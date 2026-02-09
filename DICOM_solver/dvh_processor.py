@@ -14,7 +14,7 @@ import re
 from rt_utils import RTStructBuilder
 from DICOM_solver.roi_handler import combine_rois
 from uuid import uuid4
-from .Config.global_var import INSERT_QUERY_DICOM_META, QUERY_UID, DELETE_END
+from .Config.global_var import INSERT_QUERY_DICOM_META, QUERY_UID, DELETE_END, UPLOAD_DESTINATION
 from datetime import datetime
 import os
 import pydicom
@@ -240,6 +240,7 @@ def collect_patients_dicom(df: pd.DataFrame):
     result_list = []
     for patient_id in list_patient:
         df_o_p: pd.DataFrame = df.loc[df["patient_id"] == patient_id]
+        logging.info(f"Collecting dicom for patient {patient_id}, modalities: {df_o_p['modality'].values.tolist()}")
         ref_rt_plan_uid_list = df_o_p["referenced_rt_plan_uid"].values.tolist()
         rt_struct = df_o_p.loc[df_o_p["modality"] == "RTSTRUCT"]["file_path"].values.tolist()
         ct = df_o_p.loc[df_o_p["modality"] == "CT"]["file_path"].values.tolist()
@@ -280,7 +281,8 @@ def collect_patients_dicom(df: pd.DataFrame):
 #        rt_struct.add_roi(mask=combined_mask, name=ROI_total_string, approximate_contours=False)
 #        return rt_struct
 def adding_treatment_site(treatment_sites, data_folder):
-    """Add a hardcoded treatment site to all DICOM files, this needed for the upload to xnat to sort in the correct project"""
+    """Add a hardcoded treatment site to all DICOM files, this needed for the upload to xnat to sort in the correct
+    project"""
     try:
         logging.info("Adding a fake treatment site to the dicom files to filter the projects.")
         files = os.listdir(data_folder)
@@ -303,27 +305,25 @@ def adding_treatment_site(treatment_sites, data_folder):
         logging.error(f"An error occurred adding the fake treatment site: {e}", exc_info=True)
 
 
-def calculate_dvh_curves(dicom_bundle, str_name=None, gdp=True, upload_to_xnat=False, upload_to_pg=False):
+def calculate_dvh_curves(dicom_bundle, str_name=None):
     dvh_c = DVH_calculation()
     logging.info(f"RTstruct {dicom_bundle.rt_struct}")
     logging.info(f"RTPlan :{dicom_bundle.rt_plan}")
     logging.info(f"RTdose :{dicom_bundle.rt_dose}")
     dicom_bundle = combine(dicom_bundle)
     structures = dicom_bundle.rt_struct.GetStructures()
-
     output = dvh_c.calculate_dvh_all(dicom_bundle, structures, str_name)
-    if not gdp:
+    if UPLOAD_DESTINATION == "gdp":
         return output
-    elif upload_to_xnat:
+    elif UPLOAD_DESTINATION == "xnat":
         """Save the data locally and send a message with rabbitmq to send_XNAT container"""
         xnat = upload_XNAT()
         xnat.run(output, dicom_bundle)
-    elif upload_to_pg:
-        pg = upload_pg()
-        pg.run(output, dicom_bundle)
     else:
         return_output(dicom_bundle.patient_id, output)
     logging.info(f"Calculation complete for {dicom_bundle.patient_id}")
+    pg = upload_pg()
+    pg.run(output, dicom_bundle)
 
 
 def structure_combination(item, rt_struct):
@@ -353,4 +353,3 @@ def combine(dicom_bundle: DicomBundle):
     rt_struct: DicomParser = DicomParser(rt_struct.ds)
     dicom_bundle.rt_struct = rt_struct
     return dicom_bundle
-

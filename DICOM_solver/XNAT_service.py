@@ -69,11 +69,35 @@ class upload_XNAT:
 
         logging.info(f"Sent data {data_folder} to queue '{queue}'")
 
+    def _send_to_next_queue_test(self, queue, data_folder):
+        output_file_path = os.path.join(
+            self.message_folder,
+            self.output_file
+        )
+        os.makedirs(os.path.dirname(output_file_path), exist_ok=True)
+
+        message = {
+            "folder_path": data_folder,
+            "action": queue
+        }
+
+        with open(output_file_path, "w") as file:
+            json.dump(message, file, indent=2)
+
+        logging.info(f"RabbitMQ message created at: {output_file_path}")
+
+        rabbitmq_config = Config(queue)
+        consumer = Consumer(rmq_config=rabbitmq_config)
+        consumer.open_connection_rmq()
+        consumer.send_message(self.message_folder)
+
+        logging.info(f"Sent data {data_folder} to queue '{queue}'")
+
     def run(self, output, dicom_bundle):
         self.create_json_metadata(dicom_bundle)
         self.save_DVH(output)
         self._send_to_next_queue("xnat", self.path)
-        
+
 
 class XNATRetriever:
     """
@@ -115,16 +139,16 @@ class XNATRetriever:
             for proj in projects
         }
         return project_urls
-        
+
     def get_subjects(self, project_url):
-            """Return dict of subject label"""
-            subjects_data = self._get(project_url).get("ResultSet", {}).get("Result", [])
-            subjects = {}
-            for subj in subjects_data:
-                subject_url = f"{project_url}/{subj['ID']}/experiments"
-                subjects[subj["label"]] = subject_url
-            return subjects
-        
+        """Return dict of subject label"""
+        subjects_data = self._get(project_url).get("ResultSet", {}).get("Result", [])
+        subjects = {}
+        for subj in subjects_data:
+            subject_url = f"{project_url}/{subj['ID']}/experiments"
+            subjects[subj["label"]] = subject_url
+        return subjects
+
     def get_experiments(self, subject_url):
         """Return dict of experiment label → scans URL"""
         experiments_data = self._get(subject_url).get("ResultSet", {}).get("Result", [])
@@ -133,12 +157,11 @@ class XNATRetriever:
             scans_url = f"{subject_url}/{exp['ID']}/scans"
             experiments[exp["label"]] = scans_url
         return experiments
-    
+
     def get_scans(self, scans_url):
         """Return list of scan info dicts"""
         scans_data = self._get(scans_url).get("ResultSet", {}).get("Result", [])
         return scans_data
-    
 
     def get_dicom_catalog(self, scan_uri):
         """Retrieve the DICOM catalog XML for a scan"""
@@ -146,7 +169,6 @@ class XNATRetriever:
         resp = requests.get(url, auth=HTTPBasicAuth(self.username, self.password))
         resp.raise_for_status()
         return resp.text
-    
 
     def extract_and_check_sopinstance_entries(self, catalog_dict, SOPinstanceUID):
         """Extract SOPInstanceUIDs and file URIs from an XNAT DICOM catalog. Also checks if SOPinstanceUID correspond"""
@@ -180,7 +202,7 @@ class XNATRetriever:
 
         # No matching SOPInstanceUID found
         return False
-    
+
     def download_dicom_to_file(self, url, out_dir, filename):
         """Download a DICOM file from XNAT"""
         os.makedirs(out_dir, exist_ok=True)
@@ -188,9 +210,9 @@ class XNATRetriever:
         out_path = os.path.join(out_dir, filename)
 
         with requests.get(
-            url,
-            auth=HTTPBasicAuth(self.username, self.password),
-            stream=True
+                url,
+                auth=HTTPBasicAuth(self.username, self.password),
+                stream=True
         ) as r:
             r.raise_for_status()
             with open(out_path, "wb") as f:
@@ -200,10 +222,10 @@ class XNATRetriever:
 
         return out_path
 
-    def check_patient_location(self,  patient_name, study_instance_uid):
+    def check_patient_location(self, patient_name, study_instance_uid):
         """Return a list of all the urls where the patient name and is found in xnat"""
         self.patient_urls = []
-        
+
         projects = self.get_projects()
         for project in projects:
             subjects = self.get_subjects(projects[project])
@@ -215,11 +237,10 @@ class XNATRetriever:
 
             if study_instance_uid not in experiments:
                 continue
-            
+
             url = experiments[study_instance_uid]
             self.patient_urls.append(url)
 
-    
     def get_rtdose(self, SOPinstanceUID):
         """Download the RTDOSE based on patient_name, study_instance_uid, and SOPInstanceUID from XNAT"""
 
@@ -231,27 +252,27 @@ class XNATRetriever:
                 # Build the URL to the DICOM resource for this scan
                 uri = scan["URI"]
                 url = self.base_url + uri + "/resources/DICOM"
-                    
+
                 try:
                     catalog = self._get(url)
                 except Exception as e:
                     continue
-                
+
                 uid = self.extract_and_check_sopinstance_entries(catalog, SOPinstanceUID)
                 if uid is False:  # Skip if SOPInstanceUID not found
                     continue
-                
+
                 folder_path = self.current_out_dir
                 file_name = f"rt_dose_{uid['filename']}"
-                
+
                 donwload_url = f"{url}/files/{uid['file_uri']}"
-                
+
                 # Download the RTDOSE file to the local directory
                 self.download_dicom_to_file(donwload_url, folder_path, file_name)
-                
+
                 return os.path.join(folder_path, file_name)
-        raise FileNotFoundError(f"SOPInstanceUID {SOPinstanceUID} not found for this patient.")    
-        
+        raise FileNotFoundError(f"SOPInstanceUID {SOPinstanceUID} not found for this patient.")
+
     def download_by_sop(self, sop):
         """Download the RTPLAN file corresponding to a given RTDOSE."""
         # Read RTDOSE to get the referenced RTPLAN SOPInstanceUID
@@ -273,20 +294,19 @@ class XNATRetriever:
                         catalog_dict = self._get(dicom_resource_url)
                     except Exception as e:
                         continue
-                    
+
                     uid_entry = self.extract_and_check_sopinstance_entries(catalog_dict, sop)
-                
+
                     if not uid_entry:
                         continue
                     # Build download URL and save locally
                     download_url = f"{dicom_resource_url}/files/{uid_entry['file_uri']}"
                     filename = f"{uid_entry['filename']}"
                     folder_path = self.current_out_dir
-                    
+
                     self.download_dicom_to_file(download_url, folder_path, filename)
                     return os.path.join(folder_path, filename)
         raise FileNotFoundError(f"SOPInstanceUID {sop} not found for this patient.")
-            
 
     def extract_ct_sop_uids_from_rtstruct(self, ds_rtstruct):
         """Return a set of CT SOPInstanceUIDs referenced by the RTSTRUCT."""
@@ -323,7 +343,7 @@ class XNATRetriever:
                     catalog = self._get(dicom_resource_url)
                 except Exception:
                     continue
-                
+
                 for sop in ct_sops:
                     uid_entry = self.extract_and_check_sopinstance_entries(catalog, sop)
                     if not uid_entry:
@@ -344,7 +364,6 @@ class XNATRetriever:
 
         return False
 
-
     def run(self, API, modality):
 
         url = API
@@ -353,13 +372,13 @@ class XNATRetriever:
 
         response = requests.post(url, json=payload, headers=headers)
         response_data = response.json()
-        
+
         for entry in response_data.get("new_sop_instances", []):
             sop_instance_uid = entry["sop_instance_uid"]
             study_instance_uid = entry["study_instance_uid"]
             xnat_experiment_label = study_instance_uid.replace(".", "_")
             patient_name = entry["patient_name"]
-        
+
             self.current_out_dir = os.path.join("data/xnat_listener", sop_instance_uid)
             os.makedirs(self.current_out_dir, exist_ok=True)
 
@@ -383,7 +402,7 @@ class XNATRetriever:
             rtstruct_path = self.download_by_sop(rtstruct_sop)
             self.download_ct_series_from_rtstruct(rtstruct_path)
 
-        
+
 if __name__ == "__main__":
     retriever = XNATRetriever(base_url="http://localhost:8080", username="admin", password="admin")
     # patient_name = "SEDI_TEST001"
