@@ -39,8 +39,10 @@ def create_dvh_tables(db: PostgresInterface):
 # A class to upload actual data to postgress
 class upload_pg:
     def __init__(self):
-        file_d = read_config()
-        self.postgres_config = file_d.get("postgres", {})
+        #file_d = read_config()
+        #file_d = Config("postgres").config
+        self.postgres_config = Config("postgres").config
+            #file_d.get("postgres", {})
 
     def SOP_UID_rtose(self, dicom_bundle):
         """Get SOP UID for rtdose"""
@@ -95,6 +97,7 @@ class upload_pg:
             self.postgres_config["password"],
             self.postgres_config["port"]
         )
+
         pg.connect()
 
         inserted_rois = set()

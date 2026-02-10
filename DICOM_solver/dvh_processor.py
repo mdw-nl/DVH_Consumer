@@ -314,13 +314,13 @@ def calculate_dvh_curves(dicom_bundle, str_name=None):
     structures = dicom_bundle.rt_struct.GetStructures()
     output = dvh_c.calculate_dvh_all(dicom_bundle, structures, str_name)
     if UPLOAD_DESTINATION == "gdp":
-        return output
+        return_output(dicom_bundle.patient_id, output)
     elif UPLOAD_DESTINATION == "xnat":
         """Save the data locally and send a message with rabbitmq to send_XNAT container"""
         xnat = upload_XNAT()
         xnat.run(output, dicom_bundle)
     else:
-        return_output(dicom_bundle.patient_id, output)
+        return output
     logging.info(f"Calculation complete for {dicom_bundle.patient_id}")
     pg = upload_pg()
     pg.run(output, dicom_bundle)
