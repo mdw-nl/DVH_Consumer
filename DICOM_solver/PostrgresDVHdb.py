@@ -91,7 +91,7 @@ class upload_pg:
         sop_uid = self.SOP_UID_rtose(dicom_bundle)
 
         pg = PostgresInterface(
-            "localhost",
+            self.postgres_config["host"],
             self.postgres_config["db"],
             self.postgres_config["username"],
             self.postgres_config["password"],
