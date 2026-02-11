@@ -5,8 +5,8 @@ host="$1"
 shift
 cmd="$@"
 
-until pg_isready -h "$host" -U "$POSTGRES_USER"; do
-  echo "Waiting for PostgreSQL at $host..."
+until pg_isready -h "$POSTGRES_HOST" -U "$POSTGRES_USER"; do
+  echo "Waiting for PostgreSQL at $POSTGRES_HOST..."
   sleep 2
 done
 
