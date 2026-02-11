@@ -1,14 +1,25 @@
-#!/bin/bash
+#!/bin/sh
 set -e
 
-host="$1"
-shift
-cmd="$@"
+HOST="$POSTGRES_HOST"
+PORT="${POSTGRES_PORT:-5432}"
 
-until pg_isready -h "$POSTGRES_HOST" -U "$POSTGRES_USER"; do
-  echo "Waiting for PostgreSQL at $POSTGRES_HOST..."
+if [ -z "$HOST" ]; then
+  echo "ERROR: POSTGRES_HOST is not set."
+  exit 1
+fi
+
+if [ -z "$POSTGRES_USER" ]; then
+  echo "ERROR: POSTGRES_USER is not set."
+  exit 1
+fi
+
+echo "Waiting for PostgreSQL at $HOST:$PORT as user $POSTGRES_USER..."
+
+until pg_isready -h "$HOST" -p "$PORT" -U "$POSTGRES_USER"; do
   sleep 2
 done
 
-echo "PostgreSQL is ready. Running command..."
-exec $cmd
+echo "PostgreSQL is ready."
+
+exec "$@"
