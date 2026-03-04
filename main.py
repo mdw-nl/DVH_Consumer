@@ -1,5 +1,5 @@
 import threading
-
+import sys
 from DICOM_solver.queue_processing import Consumer
 from DICOM_solver.dvh_processor import callback_tread
 import logging
@@ -10,10 +10,12 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse
 from DICOM_solver.API.retrieve_Data import DataAPI
 
+
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,
     format="%(asctime)s - %(levelname)s - %(message)s",
-    handlers=[logging.StreamHandler()]
+    handlers=[logging.StreamHandler(sys.stdout)],
+    force=True,
 )
 logger = logging.getLogger()
 app = FastAPI()

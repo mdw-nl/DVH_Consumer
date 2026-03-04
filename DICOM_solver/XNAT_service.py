@@ -10,7 +10,7 @@ from DICOM_solver.config_handler import Config
 import xml.etree.ElementTree as ET
 import xmltodict
 
-
+logger = logging.getLogger(__name__)
 class upload_XNAT:
 
     def __init__(self):
@@ -36,14 +36,14 @@ class upload_XNAT:
         with open(info_path, "w") as f:
             json.dump(info_dict, f, indent=4)
 
-        logging.info(f"Metadata saved to {info_path}")
+        logger.info(f"Metadata saved to {info_path}")
 
     def save_DVH(self, output):
         dvh_path = os.path.join(self.path, "DVH.json")
         with open(dvh_path, "w") as f:
             json.dump(output, f, indent=4)
 
-        logging.info(f"DVH saved to {dvh_path}")
+        logger.info(f"DVH saved to {dvh_path}")
 
     def _send_to_next_queue(self, queue, data_folder):
         output_file_path = os.path.join(
@@ -60,14 +60,14 @@ class upload_XNAT:
         with open(output_file_path, "w") as file:
             json.dump(message, file, indent=2)
 
-        logging.info(f"RabbitMQ message created at: {output_file_path}")
+        logger.info(f"RabbitMQ message created at: {output_file_path}")
 
         rabbitmq_config = Config(queue)
         consumer = Consumer(rmq_config=rabbitmq_config)
         consumer.open_connection_rmq()
         consumer.send_message(self.message_folder)
 
-        logging.info(f"Sent data {data_folder} to queue '{queue}'")
+        logger.info(f"Sent data {data_folder} to queue '{queue}'")
 
     def _send_to_next_queue_test(self, queue, data_folder):
         output_file_path = os.path.join(
@@ -84,14 +84,14 @@ class upload_XNAT:
         with open(output_file_path, "w") as file:
             json.dump(message, file, indent=2)
 
-        logging.info(f"RabbitMQ message created at: {output_file_path}")
+        logger.info(f"RabbitMQ message created at: {output_file_path}")
 
         rabbitmq_config = Config(queue)
         consumer = Consumer(rmq_config=rabbitmq_config)
         consumer.open_connection_rmq()
         consumer.send_message(self.message_folder)
 
-        logging.info(f"Sent data {data_folder} to queue '{queue}'")
+        logger.info(f"Sent data {data_folder} to queue '{queue}'")
 
     def run(self, output, dicom_bundle):
         self.create_json_metadata(dicom_bundle)

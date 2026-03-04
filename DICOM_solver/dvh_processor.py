@@ -20,23 +20,25 @@ import os
 import pydicom
 from .PostrgresDVHdb import upload_pg
 
+logger = logging.getLogger(__name__)
+
 
 def callback_tread(ch, method, properties, body, executor):
     study_uid = body.decode()
     try:
         ch.basic_ack(delivery_tag=method.delivery_tag)
     except Exception as e:
-        logging.error(f'Error while ack the message, Exception Message: {e}')
-        logging.warning(f"Exception Type: {type(e).__name__}")
-        logging.warning(traceback.format_exc())
+        logger.error(f'Error while ack the message, Exception Message: {e}')
+        logger.warning(f"Exception Type: {type(e).__name__}")
+        logger.warning(traceback.format_exc())
         raise e
-    logging.info(f"Message processed with uid: {study_uid}")
+    logger.info(f"Message processed with uid: {study_uid}")
     db = connect_db()
     try:
 
         future = executor.submit(process_message, study_uid)
         future.result()
-        logging.info("Process completed")
+        logger.info("Process completed")
 
         params = (
             study_uid,
@@ -46,9 +48,9 @@ def callback_tread(ch, method, properties, body, executor):
         db.execute_query(INSERT_QUERY_DICOM_META, params)
         db.disconnect()
     except Exception as e:
-        logging.warning(f"Error during calculation, Exception Message: {e}")
-        logging.warning(f"Exception Type: {type(e).__name__}")
-        logging.warning(traceback.format_exc())
+        logger.warning(f"Error during calculation, Exception Message: {e}")
+        logger.warning(f"Exception Type: {type(e).__name__}")
+        logger.warning(traceback.format_exc())
         params = (
             study_uid,
             False,
@@ -64,18 +66,18 @@ def verify_bundle(dicom_bundle):
     :param dicom_bundle:
     :return:
     """
-    logging.info(f"Verifying DicomBundle for patient {dicom_bundle.patient_id}")
-    logging.info(f"RT Plan path: {dicom_bundle.rt_plan_path}")
-    logging.info(f"RT Struct path: {dicom_bundle.rt_struct_path}")
-    logging.info(f"RT Dose path: {dicom_bundle.rt_dose_path}")
+    logger.info(f"Verifying DicomBundle for patient {dicom_bundle.patient_id}")
+    logger.info(f"RT Plan path: {dicom_bundle.rt_plan_path}")
+    logger.info(f"RT Struct path: {dicom_bundle.rt_struct_path}")
+    logger.info(f"RT Dose path: {dicom_bundle.rt_dose_path}")
     if not dicom_bundle.rt_plan_path or not dicom_bundle.rt_struct_path:
-        logging.warning("Missing RT Plan, RT Struct  path in the DicomBundle")
+        logger.warning("Missing RT Plan, RT Struct  path in the DicomBundle")
         return False
     if not os.path.exists(dicom_bundle.rt_plan_path):
-        logging.warning(f"RT Plan file does not exist: {dicom_bundle.rt_plan_path}")
+        logger.warning(f"RT Plan file does not exist: {dicom_bundle.rt_plan_path}")
         return False
     if not os.path.exists(dicom_bundle.rt_struct_path):
-        logging.warning(f"RT Struct file does not exist: {dicom_bundle.rt_struct_path}")
+        logger.warning(f"RT Struct file does not exist: {dicom_bundle.rt_struct_path}")
         return False
     return True
 
@@ -87,49 +89,49 @@ def process_message(study_uid):
     """
     try:
 
-        logging.info(f"Delete is : {DELETE_END}")
+        logger.info(f"Delete is : {DELETE_END}")
         db = connect_db()
 
         if study_uid is None:
             raise Exception(f"Study uid is : {study_uid}")
-        logging.info(f"The study uid is :{study_uid}")
+        logger.info(f"The study uid is :{study_uid}")
         result = get_all_uid(db, study_uid)
 
         verified = verify_full(result)
         if verified:
-            logging.info(f"result is :{result}")
+            logger.info(f"result is :{result}")
             dicom_bundles = collect_patients_dicom(result)
             if dicom_bundles:
                 for dicom_bundle in dicom_bundles:
-                    logging.info(f"Patients to analyze:{len(dicom_bundles)} ")
-                    logging.info(f"{dicom_bundles[0]}")
+                    logger.info(f"Patients to analyze:{len(dicom_bundles)} ")
+                    logger.info(f"{dicom_bundles[0]}")
                     try:
 
                         calculate_dvh_curves(dicom_bundle)
                     except Exception as e:
-                        logging.warning(f"Error during calculation, Exception Message: {e}")
-                        logging.warning(f"Exception Type: {type(e).__name__}")
-                        logging.warning(traceback.format_exc())
+                        logger.warning(f"Error during calculation, Exception Message: {e}")
+                        logger.warning(f"Exception Type: {type(e).__name__}")
+                        logger.warning(traceback.format_exc())
                         raise e
-                logging.info(DELETE_END)
+                logger.info(DELETE_END)
                 if DELETE_END:
-                    logging.info(f"Deleting patient data from the database, {DELETE_END}")
+                    logger.info(f"Deleting patient data from the database, {DELETE_END}")
                     try:
 
                         for dicom_bundle in dicom_bundles:
                             dicom_bundle.rm_data_patient()
                     except Exception as e:
-                        logging.warning(f"Error during delete of patient data, Exception Message: {e}")
-                        logging.warning(f"Exception Type: {type(e).__name__}")
-                        logging.warning(traceback.format_exc())
+                        logger.warning(f"Error during delete of patient data, Exception Message: {e}")
+                        logger.warning(f"Exception Type: {type(e).__name__}")
+                        logger.warning(traceback.format_exc())
                         raise e
             else:
-                logging.info("No dicom bundles found for the study uid")
+                logger.info("No dicom bundles found for the study uid")
         db.disconnect()
     except Exception as e:
-        logging.warning(f"Exception Type: {type(e).__name__}")
-        logging.warning(f"Exception Message: {e}")
-        logging.warning(traceback.format_exc())
+        logger.warning(f"Exception Type: {type(e).__name__}")
+        logger.warning(f"Exception Message: {e}")
+        logger.warning(traceback.format_exc())
         raise e
 
 
@@ -143,7 +145,7 @@ def connect_db():
         config_dict_db["username"], config_dict_db["password"], config_dict_db["db"]
     db = PostgresInterface(host=host, database=db, user=user, password=pwd, port=port)
     db.connect()
-    logging.info("Connected to the database")
+    logger.info("Connected to the database")
 
     return db
 
@@ -166,7 +168,7 @@ def get_all_uid(db, uid):
 def check_if_all_in(list_v):
     list_m = ['CT', 'RTSTRUCT', 'RTPLAN', 'RTDOSE']
     value_ = False
-    logging.info(f"Checking if all modalities are present in the list: {list_v}")
+    logger.info(f"Checking if all modalities are present in the list: {list_v}")
     for e in list_m:
         if e not in list_v:
             return False
@@ -185,19 +187,19 @@ def verify_full(df: pd.DataFrame) -> bool:
     list_patient = list(set(df["patient_id"].values.tolist()))
     n_patients = len(list_patient)
     if len(list_patient) > 1:
-        logging.info(f"More than one patients in the database {n_patients}")
+        logger.info(f"More than one patients in the database {n_patients}")
         result = any(
             check_if_all_in(list(set(df.loc[df["patient_id"] == patient_id]["modality"].values.tolist())))
             for patient_id in list_patient
         )
-        logging.info(f"All dicom component received ? {result} for {n_patients} patients")
+        logger.info(f"All dicom component received ? {result} for {n_patients} patients")
     elif len(list_patient) == 1:
-        logging.info("Only one patient")
+        logger.info("Only one patient")
         patient_id = list_patient[0]
         result = check_if_all_in(
             list(set(df.loc[df["patient_id"] == patient_id]["modality"].values.tolist()))
         )
-    logging.debug(f"All dicom component received ? {result}")
+    logger.debug(f"All dicom component received ? {result}")
 
     return result
 
@@ -218,11 +220,11 @@ def link_rt_plan_dose(df, rt_plan_uid_list, patient_id, ct, rt_struct):
             "file_path"].values.tolist()
         rt_plan = df.loc[(df["sop_instance_uid"] == k) & (df["modality"] == "RTPLAN")][
             "file_path"].values.tolist()
-        logging.info(f"RT dose and plan :{rt_dose}, {rt_plan}")
-        logging.info(f"rt struct {rt_struct[0]}")
-        logging.info(f"rt plan  {rt_plan[0]}")
-        logging.info(f"ct  {ct[0]}")
-        logging.info(f"rt doe   {rt_dose}")
+        logger.info(f"RT dose and plan :{rt_dose}, {rt_plan}")
+        logger.info(f"rt struct {rt_struct[0]}")
+        logger.info(f"rt plan  {rt_plan[0]}")
+        logger.info(f"ct  {ct[0]}")
+        logger.info(f"rt doe   {rt_dose}")
         dicom_bundle = DicomBundle(patient_id=patient_id, rt_ct=ct[0], rt_plan=rt_plan[0],
                                    rt_dose=rt_dose, rt_struct=rt_struct[0])
         list_do.append(dicom_bundle)
@@ -235,12 +237,12 @@ def collect_patients_dicom(df: pd.DataFrame):
     :param df:
     :return:
     """
-    logging.info(f"Dataframe is {df.columns}")
+    logger.info(f"Dataframe is {df.columns}")
     list_patient = list(set(df["patient_id"].values.tolist()))
     result_list = []
     for patient_id in list_patient:
         df_o_p: pd.DataFrame = df.loc[df["patient_id"] == patient_id]
-        logging.info(f"Collecting dicom for patient {patient_id}, modalities: {df_o_p['modality'].values.tolist()}")
+        logger.info(f"Collecting dicom for patient {patient_id}, modalities: {df_o_p['modality'].values.tolist()}")
         ref_rt_plan_uid_list = df_o_p["referenced_rt_plan_uid"].values.tolist()
         rt_struct = df_o_p.loc[df_o_p["modality"] == "RTSTRUCT"]["file_path"].values.tolist()
         ct = df_o_p.loc[df_o_p["modality"] == "CT"]["file_path"].values.tolist()
@@ -284,7 +286,7 @@ def adding_treatment_site(treatment_sites, data_folder):
     """Add a hardcoded treatment site to all DICOM files, this needed for the upload to xnat to sort in the correct
     project"""
     try:
-        logging.info("Adding a fake treatment site to the dicom files to filter the projects.")
+        logger.info("Adding a fake treatment site to the dicom files to filter the projects.")
         files = os.listdir(data_folder)
         for file in files:
             if file.endswith(".dcm"):
@@ -300,16 +302,16 @@ def adding_treatment_site(treatment_sites, data_folder):
 
                 ds.BodyPartExamined = site
                 ds.save_as(file_path)
-        logging.info("Added the treatment site")
+        logger.info("Added the treatment site")
     except Exception as e:
-        logging.error(f"An error occurred adding the fake treatment site: {e}", exc_info=True)
+        logger.error(f"An error occurred adding the fake treatment site: {e}", exc_info=True)
 
 
 def calculate_dvh_curves(dicom_bundle, str_name=None):
     dvh_c = DVH_calculation()
-    logging.info(f"RTstruct {dicom_bundle.rt_struct}")
-    logging.info(f"RTPlan :{dicom_bundle.rt_plan}")
-    logging.info(f"RTdose :{dicom_bundle.rt_dose}")
+    logger.info(f"RTstruct {dicom_bundle.rt_struct}")
+    logger.info(f"RTPlan :{dicom_bundle.rt_plan}")
+    logger.info(f"RTdose :{dicom_bundle.rt_dose}")
     dicom_bundle = combine(dicom_bundle)
     structures = dicom_bundle.rt_struct.GetStructures()
     output = dvh_c.calculate_dvh_all(dicom_bundle, structures, str_name)
@@ -319,9 +321,11 @@ def calculate_dvh_curves(dicom_bundle, str_name=None):
         """Save the data locally and send a message with rabbitmq to send_XNAT container"""
         xnat = upload_XNAT()
         xnat.run(output, dicom_bundle)
+    elif not UPLOAD_DESTINATION or UPLOAD_DESTINATION != "xnat" or UPLOAD_DESTINATION != "gdp":
+        logger.warning(f"Upload destination {UPLOAD_DESTINATION} not supported, returning the output")
     else:
         return output
-    logging.info(f"Calculation complete for {dicom_bundle.patient_id}")
+    logger.info(f"Calculation complete for {dicom_bundle.patient_id}")
     pg = upload_pg()
     pg.run(output, dicom_bundle)
 
@@ -335,17 +339,17 @@ def structure_combination(item, rt_struct):
     rt_struct_rois = rt_struct.get_roi_names()
     for k in ROI_list:
         if not check_if_roi_exist(k, rt_struct_rois):
-            logging.info(f"Roi combination cancelled. {k} not in the roi list")
+            logger.info(f"Roi combination cancelled. {k} not in the roi list")
             return rt_struct
     combined_mask = combine_rois(rt_struct, ROI_list, operations_list)
     rt_struct.add_roi(mask=combined_mask, name=ROI_total_string, approximate_contours=False)
-    logging.info(f"Combination completed. {ROI_total_string}")
+    logger.info(f"Combination completed. {ROI_total_string}")
     return rt_struct
 
 
 def combine(dicom_bundle: DicomBundle):
     rt_struct = RTStructBuilder.create_from(dicom_bundle.rt_ct_path, dicom_bundle.rt_struct_path)
-    logging.info("Starting combination")
+    logger.info("Starting combination")
     dvh_calculations_list = Config("dvh-calculations").config
     rt_struct = set_standarized_names(rt_struct)
     for item in dvh_calculations_list:
