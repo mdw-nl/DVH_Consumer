@@ -1,18 +1,19 @@
 import json
 import logging
-import pydicom
 import os
+
+import pydicom
 import requests
-from urllib.parse import urljoin
-from requests.auth import HTTPBasicAuth
-from DICOM_solver.queue_processing import Consumer
-from DICOM_solver.config_handler import Config
-import xml.etree.ElementTree as ET
 import xmltodict
+from requests.auth import HTTPBasicAuth
+
+from DICOM_solver.config_handler import Config
+from DICOM_solver.queue_processing import Consumer
 
 logger = logging.getLogger(__name__)
-class upload_XNAT:
 
+
+class upload_XNAT:
     def __init__(self):
         self.path = "DVH_data"
         self.message_folder = "messages"
@@ -21,15 +22,12 @@ class upload_XNAT:
         os.makedirs(self.path, exist_ok=True)
 
     def create_json_metadata(self, dicom_bundle):
-        ds = pydicom.dcmread(
-            dicom_bundle.rt_struct_path,
-            stop_before_pixels=True
-        )
+        ds = pydicom.dcmread(dicom_bundle.rt_struct_path, stop_before_pixels=True)
 
         info_dict = {
             "project": str(ds.BodyPartExamined),
             "subject": str(ds.PatientName),
-            "experiment": str(ds.StudyInstanceUID).replace(".", "_")
+            "experiment": str(ds.StudyInstanceUID).replace(".", "_"),
         }
 
         info_path = os.path.join(self.path, "metadata_xnat.json")
@@ -46,16 +44,10 @@ class upload_XNAT:
         logger.info(f"DVH saved to {dvh_path}")
 
     def _send_to_next_queue(self, queue, data_folder):
-        output_file_path = os.path.join(
-            self.message_folder,
-            self.output_file
-        )
+        output_file_path = os.path.join(self.message_folder, self.output_file)
         os.makedirs(os.path.dirname(output_file_path), exist_ok=True)
 
-        message = {
-            "folder_path": data_folder,
-            "action": queue
-        }
+        message = {"folder_path": data_folder, "action": queue}
 
         with open(output_file_path, "w") as file:
             json.dump(message, file, indent=2)
@@ -70,16 +62,10 @@ class upload_XNAT:
         logger.info(f"Sent data {data_folder} to queue '{queue}'")
 
     def _send_to_next_queue_test(self, queue, data_folder):
-        output_file_path = os.path.join(
-            self.message_folder,
-            self.output_file
-        )
+        output_file_path = os.path.join(self.message_folder, self.output_file)
         os.makedirs(os.path.dirname(output_file_path), exist_ok=True)
 
-        message = {
-            "folder_path": data_folder,
-            "action": queue
-        }
+        message = {"folder_path": data_folder, "action": queue}
 
         with open(output_file_path, "w") as file:
             json.dump(message, file, indent=2)
@@ -100,8 +86,7 @@ class upload_XNAT:
 
 
 class XNATRetriever:
-    """
-    Retrieve RTDOSE, RTPLAN, RTSTRUCT, and CTs from XNAT
+    """Retrieve RTDOSE, RTPLAN, RTSTRUCT, and CTs from XNAT
     using patient ID and SOPInstanceUID.
     """
 
@@ -126,18 +111,13 @@ class XNATRetriever:
         if "xml" in content_type:
             return xmltodict.parse(resp.text)
 
-        raise ValueError(
-            f"Unsupported Content-Type '{content_type}' for URL {url}"
-        )
+        raise ValueError(f"Unsupported Content-Type '{content_type}' for URL {url}")
 
     def get_projects(self):
         """Return dict of project nameL"""
         data = self._get(self.base_url_projects)
         projects = data.get("ResultSet", {}).get("Result", [])
-        project_urls = {
-            proj["name"]: f"{self.base_url_projects}/{proj['ID']}/subjects"
-            for proj in projects
-        }
+        project_urls = {proj["name"]: f"{self.base_url_projects}/{proj['ID']}/subjects" for proj in projects}
         return project_urls
 
     def get_subjects(self, project_url):
@@ -173,12 +153,7 @@ class XNATRetriever:
     def extract_and_check_sopinstance_entries(self, catalog_dict, SOPinstanceUID):
         """Extract SOPInstanceUIDs and file URIs from an XNAT DICOM catalog. Also checks if SOPinstanceUID correspond"""
         try:
-            entries = (
-                catalog_dict
-                .get("cat:DCMCatalog", {})
-                .get("cat:entries", {})
-                .get("cat:entry", [])
-            )
+            entries = catalog_dict.get("cat:DCMCatalog", {}).get("cat:entries", {}).get("cat:entry", [])
         except (KeyError, TypeError) as exc:
             raise ValueError("Invalid catalog structure") from exc
 
@@ -209,11 +184,7 @@ class XNATRetriever:
 
         out_path = os.path.join(out_dir, filename)
 
-        with requests.get(
-                url,
-                auth=HTTPBasicAuth(self.username, self.password),
-                stream=True
-        ) as r:
+        with requests.get(url, auth=HTTPBasicAuth(self.username, self.password), stream=True) as r:
             r.raise_for_status()
             with open(out_path, "wb") as f:
                 for chunk in r.iter_content(chunk_size=8192):
@@ -243,7 +214,6 @@ class XNATRetriever:
 
     def get_rtdose(self, SOPinstanceUID):
         """Download the RTDOSE based on patient_name, study_instance_uid, and SOPInstanceUID from XNAT"""
-
         # Loop over all patient experiment URLs where the patient exists
         for url in self.patient_urls:
             scans = self.get_scans(url)
@@ -255,7 +225,7 @@ class XNATRetriever:
 
                 try:
                     catalog = self._get(url)
-                except Exception as e:
+                except Exception:
                     continue
 
                 uid = self.extract_and_check_sopinstance_entries(catalog, SOPinstanceUID)
@@ -292,7 +262,7 @@ class XNATRetriever:
                     dicom_resource_url = f"{self.base_url}{scan_uri}/resources/{resource_uri}"
                     try:
                         catalog_dict = self._get(dicom_resource_url)
-                    except Exception as e:
+                    except Exception:
                         continue
 
                     uid_entry = self.extract_and_check_sopinstance_entries(catalog_dict, sop)

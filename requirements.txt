@@ -2,7 +2,7 @@ pynetdicom
 psycopg2-binary
 pydicom==2.4.4
 pyyaml
-pika
+croniter
 pandas
 rdflib
 rt_utils

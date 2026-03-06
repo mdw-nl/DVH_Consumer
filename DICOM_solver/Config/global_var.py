@@ -12,5 +12,3 @@ INSERT_QUERY_DICOM_META = """
 """
 
 QUERY_PATIENT = """SELECT * FROM public.dicom_insert WHERE patient_id = %s;"""
-
-

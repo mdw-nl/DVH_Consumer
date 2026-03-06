@@ -1,7 +1,14 @@
-from DICOM_solver.config_handler import RoiConfig
-from dicompylercore.dicomparser import DicomParser
 import logging
 import traceback
+
+from dicompylercore.dicomparser import DicomParser
+
+from DICOM_solver.config_handler import RoiConfig
+
+
+class RoiLookupService:
+    def get_standardized_name(self, synonym):
+        return get_standardized_name(synonym)
 
 
 def get_standardized_name(synonym):
@@ -24,8 +31,7 @@ def get_standarized_names(rtstruct):
         standardized_name = get_standardized_name(roi)
         if standardized_name is None:
             continue
-        else:
-            standardized_name_dict[standardized_name] = roi
+        standardized_name_dict[standardized_name] = roi
 
     return standardized_name_dict
 
@@ -51,9 +57,7 @@ def get_standardized_name2(synonym):
 
 
 def get_standarized_names2(rtstruct: DicomParser):
-    """
-    Returns a dictionary mapping original ROI names -> standardized names.
-    """
+    """Returns a dictionary mapping original ROI names -> standardized names."""
     ds = rtstruct.ds  # access pydicom dataset from DicomParser
     standardized_name_dict = {}
 
@@ -64,6 +68,7 @@ def get_standarized_names2(rtstruct: DicomParser):
             standardized_name_dict[original_name] = standardized_name
 
     return standardized_name_dict
+
 
 # def set_standarized_names2(rtstruct: DicomParser):
 #    """

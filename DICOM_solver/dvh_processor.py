@@ -1,23 +1,24 @@
-from .PostgresInterface import PostgresInterface
-from .config_handler import Config
-from .DVH.dvh import DVH_calculation
 import logging
-import pandas as pd
-import traceback
-from .DVH.output import return_output
-from .DVH.dicom_bundle import DicomBundle
-from dicompylercore.dicomparser import DicomParser
-from DICOM_solver.roi_lookup_service import set_standarized_names, get_standarized_names
-from DICOM_solver.roi_handler import roi_list, roi_operation, combine_rois, check_if_roi_exist
-from DICOM_solver.XNAT_service import upload_XNAT
-import re
-from rt_utils import RTStructBuilder
-from DICOM_solver.roi_handler import combine_rois
-from uuid import uuid4
-from .Config.global_var import INSERT_QUERY_DICOM_META, QUERY_UID, DELETE_END, UPLOAD_DESTINATION
-from datetime import datetime
 import os
+import re
+import traceback
+from datetime import datetime
+
+import pandas as pd
 import pydicom
+from dicompylercore.dicomparser import DicomParser
+from rt_utils import RTStructBuilder
+
+from DICOM_solver.roi_handler import check_if_roi_exist, combine_rois, roi_list, roi_operation
+from DICOM_solver.roi_lookup_service import set_standarized_names
+from DICOM_solver.XNAT_service import upload_XNAT
+
+from .Config.global_var import DELETE_END, INSERT_QUERY_DICOM_META, QUERY_UID, UPLOAD_DESTINATION
+from .config_handler import Config
+from .DVH.dicom_bundle import DicomBundle
+from .DVH.dvh import DVH_calculation
+from .DVH.output import return_output
+from .PostgresInterface import PostgresInterface
 from .PostrgresDVHdb import upload_pg
 
 logger = logging.getLogger(__name__)
@@ -28,41 +29,31 @@ def callback_tread(ch, method, properties, body, executor):
     try:
         ch.basic_ack(delivery_tag=method.delivery_tag)
     except Exception as e:
-        logger.error(f'Error while ack the message, Exception Message: {e}')
+        logger.error(f"Error while ack the message, Exception Message: {e}")
         logger.warning(f"Exception Type: {type(e).__name__}")
         logger.warning(traceback.format_exc())
         raise e
     logger.info(f"Message processed with uid: {study_uid}")
     db = connect_db()
     try:
-
         future = executor.submit(process_message, study_uid)
         future.result()
         logger.info("Process completed")
 
-        params = (
-            study_uid,
-            True,
-            datetime.now()
-        )
+        params = (study_uid, True, datetime.now())
         db.execute_query(INSERT_QUERY_DICOM_META, params)
         db.disconnect()
     except Exception as e:
         logger.warning(f"Error during calculation, Exception Message: {e}")
         logger.warning(f"Exception Type: {type(e).__name__}")
         logger.warning(traceback.format_exc())
-        params = (
-            study_uid,
-            False,
-            datetime.now()
-        )
+        params = (study_uid, False, datetime.now())
         db.execute_query(INSERT_QUERY_DICOM_META, params)
         raise e
 
 
 def verify_bundle(dicom_bundle):
-    """
-    Verify that the dicom bundle component path exist using os
+    """Verify that the dicom bundle component path exist using os
     :param dicom_bundle:
     :return:
     """
@@ -83,12 +74,10 @@ def verify_bundle(dicom_bundle):
 
 
 def process_message(study_uid):
-    """
-    The function use the study_uid to retrieve the data from the database.
+    """The function use the study_uid to retrieve the data from the database.
     Verify that for each patient we have all dicom required nad start the dvh calculation
     """
     try:
-
         logger.info(f"Delete is : {DELETE_END}")
         db = connect_db()
 
@@ -106,7 +95,6 @@ def process_message(study_uid):
                     logger.info(f"Patients to analyze:{len(dicom_bundles)} ")
                     logger.info(f"{dicom_bundles[0]}")
                     try:
-
                         calculate_dvh_curves(dicom_bundle)
                     except Exception as e:
                         logger.warning(f"Error during calculation, Exception Message: {e}")
@@ -117,7 +105,6 @@ def process_message(study_uid):
                 if DELETE_END:
                     logger.info(f"Deleting patient data from the database, {DELETE_END}")
                     try:
-
                         for dicom_bundle in dicom_bundles:
                             dicom_bundle.rm_data_patient()
                     except Exception as e:
@@ -141,8 +128,13 @@ def connect_db():
         raise Exception("Postgres config is None")
 
     config_dict_db = postgres_config.config
-    host, port, user, pwd, db = config_dict_db["host"], config_dict_db["port"], \
-        config_dict_db["username"], config_dict_db["password"], config_dict_db["db"]
+    host, port, user, pwd, db = (
+        config_dict_db["host"],
+        config_dict_db["port"],
+        config_dict_db["username"],
+        config_dict_db["password"],
+        config_dict_db["db"],
+    )
     db = PostgresInterface(host=host, database=db, user=user, password=pwd, port=port)
     db.connect()
     logger.info("Connected to the database")
@@ -151,36 +143,31 @@ def connect_db():
 
 
 def get_all_uid(db, uid):
-    """
-
-    :param db:
+    """:param db:
     :param uid:
     :return:
     """
     query = f"Select * from public.dicom_insert where study_instance_uid ='{uid}';"
     try:
-        df = pd.read_sql_query(QUERY_UID, db.conn, params=(uid,))
+        df = pd.read_sql_query(QUERY_UID, db.conn, params=[uid])
     except Exception as e:
         raise e
     return df
 
 
 def check_if_all_in(list_v):
-    list_m = ['CT', 'RTSTRUCT', 'RTPLAN', 'RTDOSE']
+    list_m = ["CT", "RTSTRUCT", "RTPLAN", "RTDOSE"]
     value_ = False
     logger.info(f"Checking if all modalities are present in the list: {list_v}")
     for e in list_m:
         if e not in list_v:
             return False
-        else:
-            value_ = True
+        value_ = True
     return value_
 
 
 def verify_full(df: pd.DataFrame) -> bool:
-    """
-
-    :param df:
+    """:param df:
     :return:
     """
     result = True
@@ -196,18 +183,14 @@ def verify_full(df: pd.DataFrame) -> bool:
     elif len(list_patient) == 1:
         logger.info("Only one patient")
         patient_id = list_patient[0]
-        result = check_if_all_in(
-            list(set(df.loc[df["patient_id"] == patient_id]["modality"].values.tolist()))
-        )
+        result = check_if_all_in(list(set(df.loc[df["patient_id"] == patient_id]["modality"].values.tolist())))
     logger.debug(f"All dicom component received ? {result}")
 
     return result
 
 
 def link_rt_plan_dose(df, rt_plan_uid_list, patient_id, ct, rt_struct):
-    """
-
-    :param df:
+    """:param df:
     :param rt_plan_uid_list:
     :param patient_id:
     :param ct:
@@ -217,24 +200,23 @@ def link_rt_plan_dose(df, rt_plan_uid_list, patient_id, ct, rt_struct):
     list_do = []
     for k in rt_plan_uid_list:
         rt_dose = df.loc[(df["referenced_rt_plan_uid"] == k) & (df["modality"] == "RTDOSE")][
-            "file_path"].values.tolist()
-        rt_plan = df.loc[(df["sop_instance_uid"] == k) & (df["modality"] == "RTPLAN")][
-            "file_path"].values.tolist()
+            "file_path"
+        ].values.tolist()
+        rt_plan = df.loc[(df["sop_instance_uid"] == k) & (df["modality"] == "RTPLAN")]["file_path"].values.tolist()
         logger.info(f"RT dose and plan :{rt_dose}, {rt_plan}")
         logger.info(f"rt struct {rt_struct[0]}")
         logger.info(f"rt plan  {rt_plan[0]}")
         logger.info(f"ct  {ct[0]}")
         logger.info(f"rt doe   {rt_dose}")
-        dicom_bundle = DicomBundle(patient_id=patient_id, rt_ct=ct[0], rt_plan=rt_plan[0],
-                                   rt_dose=rt_dose, rt_struct=rt_struct[0])
+        dicom_bundle = DicomBundle(
+            patient_id=patient_id, rt_ct=ct[0], rt_plan=rt_plan[0], rt_dose=rt_dose, rt_struct=rt_struct[0]
+        )
         list_do.append(dicom_bundle)
     return list_do
 
 
 def collect_patients_dicom(df: pd.DataFrame):
-    """
-
-    :param df:
+    """:param df:
     :return:
     """
     logger.info(f"Dataframe is {df.columns}")
@@ -284,7 +266,8 @@ def collect_patients_dicom(df: pd.DataFrame):
 #        return rt_struct
 def adding_treatment_site(treatment_sites, data_folder):
     """Add a hardcoded treatment site to all DICOM files, this needed for the upload to xnat to sort in the correct
-    project"""
+    project
+    """
     try:
         logger.info("Adding a fake treatment site to the dicom files to filter the projects.")
         files = os.listdir(data_folder)
@@ -333,7 +316,7 @@ def calculate_dvh_curves(dicom_bundle, str_name=None):
 def structure_combination(item, rt_struct):
     roi_string = next(iter(item.values()))["roi"]
     ROI_total_string = roi_string
-    string_parts = re.split(r'\s+', roi_string)
+    string_parts = re.split(r"\s+", roi_string)
     operations_list = roi_operation(string_parts)
     ROI_list = roi_list(string_parts)
     rt_struct_rois = rt_struct.get_roi_names()
@@ -352,7 +335,7 @@ def combine(dicom_bundle: DicomBundle):
     logger.info("Starting combination")
     dvh_calculations_list = Config("dvh-calculations").config
     rt_struct = set_standarized_names(rt_struct)
-    for item in dvh_calculations_list:
+    for item in dvh_calculations_list or []:
         rt_struct = structure_combination(item, rt_struct)
     rt_struct: DicomParser = DicomParser(rt_struct.ds)
     dicom_bundle.rt_struct = rt_struct

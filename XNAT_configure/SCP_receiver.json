@@ -13,7 +13,7 @@
     "projectRoutingExpression": "(0008,0018):(.*):1 t:.+ r:LUNG",
     "subjectRoutingExpression": "",
     "sessionRoutingExpression": ""
-    }, 
+    },
     {"id": 1,
     "aeTitle": "KIDNEY",
     "port": 8104,

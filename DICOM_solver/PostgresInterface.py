@@ -1,15 +1,11 @@
 import logging
-import psycopg2
-from .Config.global_var import NUMBER_ATTEMPTS, RETRY_DELAY_IN_SECONDS
 from time import sleep
-import logging
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s"
-)
+import psycopg2
 
+from .Config.global_var import NUMBER_ATTEMPTS, RETRY_DELAY_IN_SECONDS
 
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
 
 class PostgresInterface:
@@ -27,11 +23,7 @@ class PostgresInterface:
         for attempt in range(NUMBER_ATTEMPTS):
             try:
                 self.conn = psycopg2.connect(
-                    host=self.host,
-                    database=self.database,
-                    user=self.user,
-                    password=self.password,
-                    port=self.port
+                    host=self.host, database=self.database, user=self.user, password=self.password, port=self.port
                 )
                 self.cursor = self.conn.cursor()
                 logging.info("Connection established.")
@@ -42,9 +34,7 @@ class PostgresInterface:
                     logging.info(f"Retrying in {RETRY_DELAY_IN_SECONDS} seconds...")
                     sleep(RETRY_DELAY_IN_SECONDS)
                 else:
-
-                    raise Exception(
-                        f"Unable to connect to the database after time.")
+                    raise Exception("Unable to connect to the database after time.")
 
     def disconnect(self):
         """Close the connection to the database."""
@@ -70,7 +60,7 @@ class PostgresInterface:
             self.cursor.execute(query, params)
             return self.cursor.fetchall()
         except Exception as e:
-            print(f"Error fetching results: {e}")
+            logging.warning(f"Error fetching results: {e}")
             return None
 
     def fetch_one(self, query, params=None):
@@ -113,7 +103,7 @@ class PostgresInterface:
         query = """
         SELECT EXISTS (
             SELECT 1
-            FROM information_schema.tables 
+            FROM information_schema.tables
             WHERE table_schema = 'public'
             AND table_name = %s
         );

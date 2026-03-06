@@ -1,11 +1,11 @@
 import unittest
-from test_data import generate_df_sample
-from DICOM_solver.dvh_processor import verify_full, collect_patients_dicom
 
+from test_data import generate_df_sample
+
+from DICOM_solver.dvh_processor import collect_patients_dicom, verify_full
 
 
 class TestCallback(unittest.TestCase):
-
     def test_verify_full(self):
         dt, dp1, dp2 = generate_df_sample()
 

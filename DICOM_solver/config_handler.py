@@ -1,10 +1,11 @@
-import yaml
 import logging
 import os
 
+import yaml
+
 
 def read_config():
-    with open('DICOM_solver/Config/config.yaml', 'r') as file:
+    with open("DICOM_solver/Config/config.yaml") as file:
         file_red = yaml.safe_load(file)
         return file_red
 
@@ -29,17 +30,17 @@ class RoiConfig:
         return self.__class__._rois
 
     def __new__(cls, *args, **kwargs):
-        if not hasattr(cls, 'instance'):
-            cls._instance = super(RoiConfig, cls).__new__(cls)
+        if not hasattr(cls, "instance"):
+            cls._instance = super().__new__(cls)
             cls._load_config()
         return cls._instance
 
     @classmethod
     def _load_config(cls):
 
-        config_path = os.path.join(os.path.dirname(__file__), 'Config', 'roi_name_mappings.yaml')
+        config_path = os.path.join(os.path.dirname(__file__), "Config", "roi_name_mappings.yaml")
         logging.info(f"The config path is {config_path}")
-        with open(config_path, 'r') as file:
+        with open(config_path) as file:
             logging.info(f"The file path is {file}")
             roi_name_object = yaml.safe_load(file)
             cls._rois.clear()
@@ -53,4 +54,6 @@ class RoiConfig:
     #        for standardName, synonymList in roiNameObject.items():
     #            for synonym in synonymList:
     #                self.rois[synonym] = standardName
+
+
 #

@@ -1,17 +1,16 @@
-from typing import List
-from array import array
 import numpy as np
 from rt_utils import RTStruct
 
 
-def combine_rois(rtstruct: RTStruct, rois: List[str], operators: List[str]) -> List[bool]:
+def combine_rois(rtstruct: RTStruct, rois: list[str], operators: list[str]) -> list[bool]:
     assert len(rois) - 1 == len(operators), "There should be exactly one operator less than the number of ROIs."
 
     # Sort the rois based on the operators, so that first the additiosn is done and then the substractions.
     # This will make sure that the order of the operations does not matter
     roi_operator_pairs = list(zip(rois[1:], operators))
-    sorted_pairs = sorted(roi_operator_pairs,
-                          key=lambda x: x[1] == "-")  # "-" evaluates to True (1), so it moves to the end
+    sorted_pairs = sorted(
+        roi_operator_pairs, key=lambda x: x[1] == "-"
+    )  # "-" evaluates to True (1), so it moves to the end
     sorted_rois, sorted_operators = zip(*sorted_pairs) if sorted_pairs else ([], [])
 
     # Initiate the combined mask based on the first ROI
@@ -48,5 +47,4 @@ def roi_list(roi_string):
 def check_if_roi_exist(roi, rtstruct_roi):
     if roi in rtstruct_roi:
         return True
-    else:
-        return False
+    return False

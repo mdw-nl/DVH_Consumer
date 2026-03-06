@@ -1,13 +1,14 @@
 import json
 import logging
-import pydicom
 import os
-from DICOM_solver.queue_processing import Consumer
+
+import pydicom
+
 from DICOM_solver.config_handler import Config
+from DICOM_solver.queue_processing import Consumer
 
 
 class upload_XNAT:
-
     def __init__(self):
         self.path = "DVH_data"
         self.message_folder = "messages"
@@ -16,15 +17,12 @@ class upload_XNAT:
         os.makedirs(self.path, exist_ok=True)
 
     def create_json_metadata(self, dicom_bundle):
-        ds = pydicom.dcmread(
-            dicom_bundle.rt_struct_path,
-            stop_before_pixels=True
-        )
+        ds = pydicom.dcmread(dicom_bundle.rt_struct_path, stop_before_pixels=True)
 
         info_dict = {
             "project": str(ds.BodyPartExamined),
             "subject": str(ds.PatientName),
-            "experiment": str(ds.StudyInstanceUID).replace(".", "_")
+            "experiment": str(ds.StudyInstanceUID).replace(".", "_"),
         }
 
         info_path = os.path.join(self.path, "metadata_xnat.json")
@@ -41,16 +39,10 @@ class upload_XNAT:
         logging.info(f"DVH saved to {dvh_path}")
 
     def _send_to_next_queue(self, queue, data_folder):
-        output_file_path = os.path.join(
-            self.message_folder,
-            self.output_file
-        )
+        output_file_path = os.path.join(self.message_folder, self.output_file)
         os.makedirs(os.path.dirname(output_file_path), exist_ok=True)
 
-        message = {
-            "folder_path": data_folder,
-            "action": queue
-        }
+        message = {"folder_path": data_folder, "action": queue}
 
         with open(output_file_path, "w") as file:
             json.dump(message, file, indent=2)

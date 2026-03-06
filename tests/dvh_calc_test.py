@@ -1,21 +1,23 @@
 #!/usr/bin/env python
-import unittest
-import numpy as np
-import os
 import math
-import zipfile
-import urllib.request
-from rt_utils import RTStructBuilder
+import os
 import re
-import DICOM_solver.roi_handler as roi_handler
-from DICOM_solver.DVH.dvh import DVH_calculation
-from DICOM_solver.config_handler import Config
-from dicompylercore import dicomparser
-import DICOM_solver.roi_lookup_service as roi_lookup_sevice
+import unittest
+import urllib.request
+import zipfile
 
-ZIP_PATH = 'dicomtestdata.zip'
-DICOM_DATA_PATH = 'dicomdata'
-DICOM_URL = 'https://github.com/mdw-nl/test-data/releases/download/dicom-data-1.0.0/dicomdata.zip'
+import numpy as np
+from dicompylercore import dicomparser
+from rt_utils import RTStructBuilder
+
+import DICOM_solver.roi_handler as roi_handler
+import DICOM_solver.roi_lookup_service as roi_lookup_sevice
+from DICOM_solver.config_handler import Config
+from DICOM_solver.DVH.dvh import DVH_calculation
+
+ZIP_PATH = "dicomtestdata.zip"
+DICOM_DATA_PATH = "dicomdata"
+DICOM_URL = "https://github.com/mdw-nl/test-data/releases/download/dicom-data-1.0.0/dicomdata.zip"
 RTSTRUCT_FILENAME = "RS.PYTIM05_.dcm"
 ROI_KIDNEY_LEFT = "Kidney - left_P"
 ROI_KIDNEY_RIGHT = "Kidney - right_P"
@@ -36,8 +38,8 @@ class TestROIHandler(unittest.TestCase):
     def setUp(self):
         if not os.path.exists(ZIP_PATH):
             urllib.request.urlretrieve(DICOM_URL, ZIP_PATH)
-        with zipfile.ZipFile(ZIP_PATH, 'r') as zip_ref:
-            zip_ref.extractall('')
+        with zipfile.ZipFile(ZIP_PATH, "r") as zip_ref:
+            zip_ref.extractall("")
         rtstruct_path = os.path.join(DICOM_DATA_PATH, RTSTRUCT_FILENAME)
         dicom_series_path = os.path.join(DICOM_DATA_PATH)
         self.rtstruct = RTStructBuilder.create_from(dicom_series_path, rtstruct_path)
@@ -47,13 +49,13 @@ class TestROIHandler(unittest.TestCase):
         standarized_name_dict = roi_lookup_sevice.get_standarized_names(self.rtstruct)
 
         # Loop over all the items in the config file
-        for item in dvh_calculations_list:
+        for item in dvh_calculations_list or []:
             for key, value in item.items():
                 roi_string = value["roi"]
 
-            string_parts = re.split(r'\s+', roi_string)
+            string_parts = re.split(r"\s+", roi_string)
 
-            # create two list for the operations and the ROIS with rtstruct names    
+            # create two list for the operations and the ROIS with rtstruct names
             ROI_total_string = ""
             operations_list = []
             ROI_list = []
@@ -62,7 +64,6 @@ class TestROIHandler(unittest.TestCase):
                 if i % 2 == 0:
                     operations_list.append(parts)
                 else:
-                    print(standarized_name_dict)
                     ROI_list.append(standarized_name_dict[parts])
 
             # Add the new ROI to the rtstruct
@@ -83,10 +84,7 @@ class TestROIHandler(unittest.TestCase):
             rt_plan = dicomparser.DicomParser(file_path_RTplan)
 
             dvh_c = DVH_calculation()
-            result = dvh_c.get_dvh_v(rt_struct,
-                                     dose_data,
-                                     roiNumber,
-                                     rt_plan)
+            result = dvh_c.get_dvh_v(rt_struct, dose_data, roiNumber, rt_plan)
             output = dvh_c.process_dvh_result(result, roiNumber, rt_struct.GetStructures())
 
             # print(f"mean {ROI_total_string} {output["mean"]["value"]}")
@@ -96,10 +94,11 @@ class TestROIHandler(unittest.TestCase):
     # This test check if the determined values of PTV-Vessels is close to the actual values
     def test_values_ptv_vessels(self):
         dvh_calculations_list = Config("dvh-calculations").config
-        dict_DVH_ROI = next((item[YAML_PTV_VESSELS] for item in dvh_calculations_list if "TestPTV_P-Vessels_P" in item),
-                            None)
+        dict_DVH_ROI = next(
+            (item[YAML_PTV_VESSELS] for item in (dvh_calculations_list or []) if "TestPTV_P-Vessels_P" in item), None
+        )
         roi_string = dict_DVH_ROI["roi"]
-        string_parts = re.split(r'\s+', roi_string)
+        string_parts = re.split(r"\s+", roi_string)
 
         operations_list = []
         ROI_list = []
@@ -126,10 +125,7 @@ class TestROIHandler(unittest.TestCase):
         rt_plan = dicomparser.DicomParser(file_path_RTplan)
 
         dvh_c = DVH_calculation()
-        result = dvh_c.get_dvh_v(rt_struct,
-                                 dose_data,
-                                 roiNumber,
-                                 rt_plan)
+        result = dvh_c.get_dvh_v(rt_struct, dose_data, roiNumber, rt_plan)
         output = dvh_c.process_dvh_result(result, roiNumber, rt_struct.GetStructures())
 
         mean = output["mean"]["value"]
@@ -144,5 +140,5 @@ class TestROIHandler(unittest.TestCase):
         self.assertTrue(np.all(test_list))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

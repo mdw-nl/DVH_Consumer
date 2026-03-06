@@ -1,11 +1,9 @@
+from .config_handler import Config
 from .PostgresInterface import PostgresInterface
-from .config_handler import Config, read_config
-import pydicom
 
 
 def create_dvh_tables(db: PostgresInterface):
-    "This function is to create tables when docker compose up "
-
+    """This function is to create tables when docker compose up"""
     db.create_table(
         "dvh_result",
         {
@@ -22,8 +20,8 @@ def create_dvh_tables(db: PostgresInterface):
             "max_dose": "DOUBLE PRECISION",
             "V0": "DOUBLE PRECISION",
             "V15": "DOUBLE PRECISION",
-            "V35": "DOUBLE PRECISION"
-        }
+            "V35": "DOUBLE PRECISION",
+        },
     )
 
     db.create_table(
@@ -31,18 +29,18 @@ def create_dvh_tables(db: PostgresInterface):
         {
             "sop_instance_uid": "TEXT NOT NULL",
             "roi_name": "TEXT NOT NULL",
-            "result_id": "INTEGER NOT NULL REFERENCES dvh_result(result_id) ON DELETE CASCADE"
-        }
+            "result_id": "INTEGER NOT NULL REFERENCES dvh_result(result_id) ON DELETE CASCADE",
+        },
     )
 
 
 # A class to upload actual data to postgress
 class upload_pg:
     def __init__(self):
-        #file_d = read_config()
-        #file_d = Config("postgres").config
+        # file_d = read_config()
+        # file_d = Config("postgres").config
         self.postgres_config = Config("postgres").config
-            #file_d.get("postgres", {})
+        # file_d.get("postgres", {})
 
     def SOP_UID_rtose(self, dicom_bundle):
         """Get SOP UID for rtdose"""
@@ -51,7 +49,6 @@ class upload_pg:
 
     def extract_roi_dvh(self, roi_dvh):
         """Extract all relevant info from a single ROI DVH dictionary."""
-
         roi_name = roi_dvh["structureName"]
         json_id = roi_dvh["@id"]
 
@@ -84,7 +81,7 @@ class upload_pg:
             "max_dose": max_dose,
             "V0": V0,
             "V15": V15,
-            "V35": V35
+            "V35": V35,
         }
 
     def run(self, output, dicom_bundle):
@@ -95,7 +92,7 @@ class upload_pg:
             self.postgres_config["db"],
             self.postgres_config["username"],
             self.postgres_config["password"],
-            self.postgres_config["port"]
+            self.postgres_config["port"],
         )
 
         pg.connect()
@@ -131,8 +128,8 @@ class upload_pg:
             pg.cursor.execute(
                 """
                 INSERT INTO dvh_result (
-                    json_id, dose_bins, volume_bins, 
-                    D2, D50, D95, D98, 
+                    json_id, dose_bins, volume_bins,
+                    D2, D50, D95, D98,
                     min_dose, mean_dose, max_dose,
                     V0, V15, V35
                 )
@@ -152,23 +149,21 @@ class upload_pg:
                     max_dose,
                     V0,
                     V15,
-                    V35
-                )
+                    V35,
+                ),
             )
             result_id = pg.cursor.fetchone()[0]
 
             # Insert into dvh_package
-            pg.insert("dvh_package", {
-                "sop_instance_uid": sop_uid,
-                "roi_name": roi_data["roi_name"],
-                "result_id": result_id
-            })
+            pg.insert(
+                "dvh_package", {"sop_instance_uid": sop_uid, "roi_name": roi_data["roi_name"], "result_id": result_id}
+            )
 
         pg.disconnect()
 
 
 # This script is run everytime docker compose up to create the correct tables
-#if __name__ == "__main__":
+# if __name__ == "__main__":
 #    file_data = read_config()
 #    postgres_config = file_data.get("postgres", {})
 #

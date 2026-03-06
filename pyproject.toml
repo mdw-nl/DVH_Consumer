@@ -1,0 +1,183 @@
+[project]
+name = "dvh-consumer"
+version = "0.1.0"
+description = "DVH Consumer for DICOM processing"
+requires-python = ">=3.12"
+dependencies = [
+    "pynetdicom",
+    "psycopg2-binary",
+    "pydicom==2.4.4",
+    "pyyaml",
+    "croniter",
+    "pandas",
+    "rdflib",
+    "rt-utils",
+    "dicompyler-core",
+    "requests",
+    "uvicorn",
+    "fastapi",
+    "xmltodict",
+    "pika",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["DICOM_solver"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+fix = true
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+    "COM812",  # Trailing comma — conflicts with formatter
+    "ISC001",  # Implicit string concat — conflicts with formatter
+    "D203",    # One blank line before class docstring — conflicts with D211
+    "D213",    # Multi-line docstring on second line — conflicts with D212
+    "E501",    # Line length regulated by formatter
+    "TD002",   # Missing TODO author
+    "TD003",   # Missing TODO issue link
+    "TRY003",  # Long exception messages
+    "SIM102",  # Nested if
+    "SIM108",  # Ternary operator
+    # Pragmatic ignores for existing codebase
+    "D100",    # Missing docstring in public module
+    "D101",    # Missing docstring in public class
+    "D102",    # Missing docstring in public method
+    "D103",    # Missing docstring in public function
+    "D104",    # Missing docstring in public package
+    "D105",    # Missing docstring in magic method
+    "D107",    # Missing docstring in __init__
+    "ANN",     # Type annotations — too invasive for existing code
+    "N",       # Naming — medical/DICOM naming conventions used throughout
+    "EM",      # Exception message formatting
+    "FBT",     # Boolean trap — patterns used throughout
+    "PLR",     # Pylint refactoring rules
+    "C901",    # Complexity limit
+    "TRY002",  # raise Exception — common pattern
+    "DTZ",     # Datetime timezone — naive datetimes intentional for DICOM
+    "BLE001",  # Broad exception catches are intentional for robustness
+    "TRY301",  # Abstract raise to inner function
+    "SLF001",  # Private member access — intentional in some places
+    "S608",    # SQL injection — internal ORM with trusted inputs
+    "S105",    # Hardcoded password — config defaults
+    "S104",    # Binding to all interfaces — intentional for DICOM server
+    "PLW0603", # global statement — used for multiprocessing worker init
+    "D205",    # 1 blank line required between summary line and description
+    "D415",    # First line should end with period
+    "ARG001",  # Unused argument — callback signatures require fixed args
+    "INP001",  # Implicit namespace package — src/ is a sub-package
+    # Logging patterns used throughout
+    "G004",    # Logging uses f-string
+    "G003",    # Logging uses +
+    "G201",    # Use .exception() instead of .error(exc_info=True)
+    "LOG015",  # Root logger usage
+    # Exception handling patterns used throughout
+    "TRY201",  # Use raise without specifying exception name
+    "TRY203",  # Remove exception handler
+    "TRY300",  # Consider moving to else block
+    "TRY400",  # Use logging.exception
+    "TRY401",  # Redundant exception in logging.exception
+    "B904",    # Raise from err
+    "B905",    # zip() without strict
+    # Relative imports — used throughout as a package
+    "TID252",  # Prefer absolute imports over relative imports
+    # os.path usage — pathlib migration not required for existing code
+    "PTH118",  # os.path.join → Path /
+    "PTH123",  # open() → Path.open()
+    "PTH103",  # os.makedirs → Path.mkdir
+    "PTH120",  # os.path.dirname → Path.parent
+    "PTH110",  # os.path.exists → Path.exists()
+    "PTH107",  # os.remove → Path.unlink()
+    "PTH208",  # os.listdir → Path.iterdir()
+    # Commented-out code — intentionally kept for reference
+    "ERA001",  # Found commented-out code
+    # Pandas patterns used throughout
+    "PD011",   # Use .to_numpy() instead of .values
+    # Test patterns — unittest style used throughout
+    "PT009",   # Use regular assert instead of unittest-style
+    "PT027",   # Use pytest.raises
+    # Misc patterns used throughout
+    "PERF401", # Use list comprehension
+    "PERF102", # Use dict.values()
+    "S101",    # Use of assert
+    "S106",    # Hardcoded password in argument
+    "S107",    # Hardcoded password in function default
+    "S112",    # try-except-continue
+    "S113",    # Requests without timeout
+    "EXE001",  # Shebang not executable
+    "FIX002",  # Line contains TODO
+    "TD004",   # Missing colon in TODO
+    "RUF012",  # Mutable class attributes
+    "RUF059",  # Unpacked variable never used
+    "SIM103",  # Return condition directly
+    "SIM118",  # Use key in dict
+    "RET503",  # Missing explicit return
+    "RET504",  # Unnecessary assignment before return
+    "PLW1641", # Object does not implement __hash__
+    "PLW2901", # Loop variable overwritten
+    "B007",    # Unused loop variable
+    "E712",    # Equality comparisons to True/False
+    "F841",    # Local variable assigned but never used
+    "D200",    # One-line docstring should fit on one line
+    "COM818",  # Trailing comma on bare tuple
+    "ARG004",  # Unused static method argument
+]
+fixable = ["ALL"]
+unfixable = []
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.isort]
+known-first-party = ["DICOM_solver"]
+
+[tool.ruff.lint.flake8-type-checking]
+strict = true
+
+[tool.ruff.lint.per-file-ignores]
+"setup.py" = [
+    "ALL",     # Legacy setup.py — not subject to linting
+]
+"tests/*.py" = [
+    "S",       # Security checks not applicable to tests
+    "INP001",  # Not a package
+]
+"Test/*.py" = [
+    "T201",    # print() is intentional in test scripts
+    "S",       # Security checks not applicable to tests
+    "INP001",  # Not a package
+]
+
+[tool.ruff.format]
+quote-style = "double"
+docstring-code-format = true
+
+[tool.ty.src]
+exclude = ["setup.py"]
+
+[tool.ty.environment]
+python-version = "3.12"
+
+[tool.ty.rules]
+unused-ignore-comment = "warn"
+invalid-return-type = "warn"
+invalid-argument-type = "warn"
+division-by-zero = "error"
+redundant-cast = "warn"
+invalid-method-override = "warn"
+not-subscriptable = "warn"
+call-non-callable = "warn"
+unknown-argument = "warn"
+unresolved-attribute = "warn"
+
+[dependency-groups]
+dev = [
+    "pre-commit>=4.5.1",
+    "ty>=0.0.20",
+]
