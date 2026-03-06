@@ -10,7 +10,6 @@ from dicompylercore.dicomparser import DicomParser
 from rt_utils import RTStructBuilder
 
 from DICOM_solver.roi_handler import check_if_roi_exist, combine_rois, roi_list, roi_operation
-from DICOM_solver.roi_lookup_service import set_standarized_names
 from DICOM_solver.XNAT_service import upload_XNAT
 
 from .Config.global_var import DELETE_END, INSERT_QUERY_DICOM_META, QUERY_UID, UPLOAD_DESTINATION
@@ -334,7 +333,6 @@ def combine(dicom_bundle: DicomBundle):
     rt_struct = RTStructBuilder.create_from(dicom_bundle.rt_ct_path, dicom_bundle.rt_struct_path)
     logger.info("Starting combination")
     dvh_calculations_list = Config("dvh-calculations").config
-    rt_struct = set_standarized_names(rt_struct)
     for item in dvh_calculations_list or []:
         rt_struct = structure_combination(item, rt_struct)
     rt_struct: DicomParser = DicomParser(rt_struct.ds)
