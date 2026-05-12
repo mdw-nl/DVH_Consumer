@@ -1,6 +1,6 @@
 pynetdicom
 psycopg2-binary
-pydicom==2.4.4
+pydicom
 pyyaml
 pika
 pandas
