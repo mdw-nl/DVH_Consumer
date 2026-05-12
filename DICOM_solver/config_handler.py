@@ -4,9 +4,9 @@ import os
 
 
 def read_config():
-    with open('DICOM_solver/Config/config.yaml', 'r') as file:
-        file_red = yaml.safe_load(file)
-        return file_red
+    config_path = os.path.join(os.path.dirname(__file__), 'Config', 'config.yaml')
+    with open(config_path, 'r') as file:
+        return yaml.safe_load(file)
 
 
 class Config:

@@ -1,13 +1,15 @@
 from typing import List
-from array import array
 import numpy as np
 from rt_utils import RTStruct
 
 
-def combine_rois(rtstruct: RTStruct, rois: List[str], operators: List[str]) -> List[bool]:
-    assert len(rois) - 1 == len(operators), "There should be exactly one operator less than the number of ROIs."
+def combine_rois(rtstruct: RTStruct, rois: List[str], operators: List[str]) -> np.ndarray:
+    if len(rois) - 1 != len(operators):
+        raise ValueError(
+            "There should be exactly one operator less than the number of ROIs."
+        )
 
-    # Sort the rois based on the operators, so that first the additiosn is done and then the substractions.
+    # Sort the rois based on the operators, so that first the additions are done and then the subtractions.
     # This will make sure that the order of the operations does not matter
     roi_operator_pairs = list(zip(rois[1:], operators))
     sorted_pairs = sorted(roi_operator_pairs,
