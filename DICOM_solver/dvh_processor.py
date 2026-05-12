@@ -15,32 +15,31 @@ def callback_tread(ch, method, properties, body, executor):
     try:
         logging.info(f"Message received with uid: {study_uid}")
         db = connect_db()
-        ch.basic_ack(delivery_tag=method.delivery_tag, )
+        ch.basic_ack(delivery_tag=method.delivery_tag)
         future = executor.submit(process_message, study_uid)
         future.result()
         logging.info("Process completed")
-        params = (
-            study_uid,
-            True,
-            datetime.now()
-        )
-        db.execute_query(INSERT_QUERY_DICOM_META, params)
-
+        _record_status(db, study_uid, True)
     except Exception as e:
         logging.error(f"Error during calculation, Exception Message: {e}")
         logging.error(f"Exception Type: {type(e).__name__}")
         logging.error(traceback.format_exc())
-        params = (
-            study_uid,
-            False,
-            datetime.now()
-        )
-        if db:
-            db.execute_query(INSERT_QUERY_DICOM_META, params)
+        _record_status(db, study_uid, False)
     finally:
-
         if db:
             db.disconnect()
+
+
+def _record_status(db, study_uid, success):
+    if db is None:
+        return
+    try:
+        db.execute_query(INSERT_QUERY_DICOM_META, (study_uid, success, datetime.now()))
+    except Exception:
+        logging.error(
+            f"Failed to write calculation_status row for {study_uid} (success={success})",
+            exc_info=True,
+        )
 
 
 def process_message(study_uid):

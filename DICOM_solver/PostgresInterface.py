@@ -51,11 +51,15 @@ class PostgresInterface:
         """Execute a query (e.g., INSERT, UPDATE, DELETE)."""
         try:
             self.cursor.execute(query, params)
-            self.conn.commit()  # Commit changes to the database
+            self.conn.commit()
             logging.info("Query executed successfully.")
         except Exception as e:
-            self.conn.rollback()  # Rollback in case of error
-            logging.warning(f"Error executing query: {e}")
+            logging.error(f"Error executing query: {e}")
+            try:
+                self.conn.rollback()
+            except Exception:
+                logging.error("Rollback also failed", exc_info=True)
+            raise
 
     def fetch_all(self, query, params=None):
         """Fetch all results from a SELECT query."""
