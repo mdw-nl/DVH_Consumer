@@ -55,33 +55,35 @@ class Consumer:
 
     def start_consumer(self, callback):
         while True:
-            i = 0
-            self.channel.basic_consume(queue=self.config_dict_rmq["queue_name"],
-                                       on_message_callback=lambda ch, method, properties, body: callback(ch, method,
-                                                                                                         properties,
-                                                                                                         body,
-                                                                                                         self.executor),
-                                       auto_ack=False)
+            self.channel.basic_consume(
+                queue=self.config_dict_rmq["queue_name"],
+                on_message_callback=lambda ch, method, properties, body: callback(
+                    ch, method, properties, body, self.executor
+                ),
+                auto_ack=False,
+            )
             try:
                 self.channel.start_consuming()
                 break
             except KeyboardInterrupt:
-                print("Consumer stopped by user.")
+                logging.info("Consumer stopped by user.")
                 break
             except Exception as e:
-
                 logging.error(f"An error occurred while consuming messages: {e}")
                 logging.error("Reconnecting to RabbitMQ...")
-                while i < self.retry_attempt:
+                reconnected = False
+                for attempt in range(1, self.retry_attempt + 1):
                     try:
-                        i += 1
                         self.reconnect()
                         self.check_queue_exists()
-                        self.start_consumer(callback)
+                        reconnected = True
                         break
-                    except Exception as e:
-                        logging.error(f"Reconnection attempt {i + 1} failed: {e}")
+                    except Exception as inner:
+                        logging.error(f"Reconnection attempt {attempt} failed: {inner}")
                         time.sleep(5)
+                if not reconnected:
+                    logging.error("All reconnection attempts failed. Exiting consumer.")
+                    break
 
         self.executor.shutdown(wait=True)
         self.close_connection()
