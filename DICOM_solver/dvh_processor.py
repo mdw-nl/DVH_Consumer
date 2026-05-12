@@ -27,9 +27,9 @@ def callback_tread(ch, method, properties, body, executor):
         db.execute_query(INSERT_QUERY_DICOM_META, params)
 
     except Exception as e:
-        logging.warning(f"Error during calculation, Exception Message: {e}")
-        logging.warning(f"Exception Type: {type(e).__name__}")
-        logging.warning(traceback.format_exc())
+        logging.error(f"Error during calculation, Exception Message: {e}")
+        logging.error(f"Exception Type: {type(e).__name__}")
+        logging.error(traceback.format_exc())
         params = (
             study_uid,
             False,
@@ -37,7 +37,6 @@ def callback_tread(ch, method, properties, body, executor):
         )
         if db:
             db.execute_query(INSERT_QUERY_DICOM_META, params)
-        raise
     finally:
 
         if db:
