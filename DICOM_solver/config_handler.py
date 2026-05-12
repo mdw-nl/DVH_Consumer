@@ -1,8 +1,10 @@
 import yaml
 import logging
 import os
+from functools import lru_cache
 
 
+@lru_cache(maxsize=1)
 def read_config():
     config_path = os.path.join(os.path.dirname(__file__), 'Config', 'config.yaml')
     with open(config_path, 'r') as file:

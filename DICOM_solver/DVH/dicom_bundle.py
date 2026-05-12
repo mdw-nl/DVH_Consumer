@@ -11,7 +11,7 @@ class DicomBundle:
         self.patient_id = patient_id
         self.rt_plan_path = rt_plan
         self.rt_struct_path: str = rt_struct
-        self.rt_ct_path: str = rt_ct[:rt_ct.rindex("/") + 1] if rt_ct else None
+        self.rt_ct_path: str = os.path.join(os.path.dirname(rt_ct), '') if rt_ct else None
         if read:
             try:
                 self.rt_plan: DicomParser = DicomParser(rt_plan)

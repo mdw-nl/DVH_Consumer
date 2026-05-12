@@ -26,13 +26,15 @@ def calculate_dvh(patient_id: str, structure: str):
         dp = DataAPI()
         dp.get_data_api(patient_id)
         res = dp.dvh_api(structure_name=structure)
-        json_ld_data = res
-    except Exception as e:
-        raise
+        if res is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"No DVH data for patient '{patient_id}', structure '{structure}'",
+            )
     finally:
         if dp:
             dp.close()
-    return JSONResponse(content=json_ld_data, media_type="application/ld+json")
+    return JSONResponse(content=res, media_type="application/ld+json")
 
 
 # Function to start the consumer and handle exceptions
