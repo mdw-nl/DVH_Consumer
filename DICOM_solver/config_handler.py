@@ -28,7 +28,7 @@ class RoiConfig:
         return self.__class__._rois
 
     def __new__(cls, *args, **kwargs):
-        if not hasattr(cls, 'instance'):
+        if cls._instance is None:
             cls._instance = super(RoiConfig, cls).__new__(cls)
             cls._load_config()
         return cls._instance
@@ -46,10 +46,3 @@ class RoiConfig:
                 for synonym in synonym_list:
                     cls._rois[synonym] = standard_name
 
-    # def load_config(self): #roi_name_mappings.yaml
-    #    with open('DICOM_solver/Config/roi_name_mappings.yaml', 'r') as file:
-    #        roiNameObject = yaml.safe_load(file)
-    #        for standardName, synonymList in roiNameObject.items():
-    #            for synonym in synonymList:
-    #                self.rois[synonym] = standardName
-#
