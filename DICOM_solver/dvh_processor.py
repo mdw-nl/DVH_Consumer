@@ -2,6 +2,7 @@ from .DVH.dvh import DVH_calculation
 import logging
 import traceback
 from .DVH.output import return_output
+from .DVH.db_writer import save_dvh_to_db
 from .Config.global_var import INSERT_QUERY_DICOM_META, DELETE_END
 from datetime import datetime
 from .combination import combine
@@ -65,7 +66,7 @@ def process_message(study_uid):
                     logging.info(f"Patients to analyze:{len(dicom_bundles)} ")
                     logging.info(f"{dicom_bundles[0]}")
                     try:
-                        calculate_dvh_curves(dicom_bundle)
+                        calculate_dvh_curves(dicom_bundle, db=db, study_uid=study_uid)
                     except Exception as e:
                         logging.warning(f"Error during calculation, Exception Message: {e}")
                         logging.warning(f"Exception Type: {type(e).__name__}")
@@ -95,24 +96,21 @@ def process_message(study_uid):
             db.disconnect()
 
 
-def calculate_dvh_curves(dicom_bundle, str_name=None, gdp=True):
+def calculate_dvh_curves(dicom_bundle, str_name=None, gdp=True, db=None, study_uid=None):
     """
     Calculate dvh curves for the dicom bundle provided
-    :param dicom_bundle:
-    :param str_name:
-    :param gdp:
     """
     dvh_c = DVH_calculation()
     logging.info(f"RTstruct {dicom_bundle.rt_struct}")
     logging.info(f"RTPlan :{dicom_bundle.rt_plan}")
     logging.info(f"RTdose :{dicom_bundle.rt_dose}")
-    # Combination happen here with renaiming
     dicom_bundle = combine(dicom_bundle)
     structures = dicom_bundle.rt_struct.GetStructures()
 
     output = dvh_c.calculate_dvh_all(dicom_bundle, structures, str_name)
     if not gdp:
         return output
-    else:
-        return_output(dicom_bundle.patient_id, output)
+    return_output(dicom_bundle.patient_id, output)
+    if db is not None:
+        save_dvh_to_db(db, dicom_bundle.patient_id, study_uid, output)
     logging.info(f"Calculation complete for {dicom_bundle.patient_id}")
