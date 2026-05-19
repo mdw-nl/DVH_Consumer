@@ -42,9 +42,9 @@ class DicomBundle:
             os.remove(self.rt_struct_path)
             logging.info(f"Removing data rt struct {self.rt_struct_path}")
             for rt in self.rt_dose_path:
-                logging.info(f"Removing data rt dose {self.rt_dose_path}")
+                logging.info(f"Removing data rt dose {rt}")
                 os.remove(rt)
-            if self.rt_plan_path is not None:
+            if self.rt_ct_path:
                 for f in os.listdir(self.rt_ct_path):
                     os.remove(os.path.join(self.rt_ct_path, f))
         except Exception as e:

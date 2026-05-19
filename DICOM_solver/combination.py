@@ -33,8 +33,15 @@ def structure_combination(item, rt_struct):
 
 def combine(dicom_bundle: DicomBundle):
     """
-    Combine structures based on configuration
+    Combine structures based on configuration.
+    Skipped entirely when no CT is available: RTStructBuilder.create_from requires
+    the CT series geometry to rasterize structure contours into voxel masks.
+    Without that, ROI combination and standardized renaming cannot run; the DVH
+    math itself still works on the native RT struct.
     """
+    if not dicom_bundle.rt_ct_path:
+        logging.info("CT not available; skipping ROI combination and standardized renaming")
+        return dicom_bundle
     rt_struct = RTStructBuilder.create_from(dicom_bundle.rt_ct_path, dicom_bundle.rt_struct_path)
     logging.info("Starting combination")
     dvh_calculations_list = Config("dvh-calculations").config

@@ -1,19 +1,19 @@
 import logging
 import os
 from .DVH.dicom_bundle import DicomBundle
+from .config_handler import Config
 import pandas as pd
 
 
-def check_if_all_in(list_v):
-    list_m = ['CT', 'RTSTRUCT', 'RTPLAN', 'RTDOSE']
-    value_ = False
-    logging.info(f"Checking if all modalities are present in the list: {list_v}")
-    for e in list_m:
+def check_if_all_in(list_v, ct_required=True):
+    required = ['RTSTRUCT', 'RTPLAN', 'RTDOSE']
+    if ct_required:
+        required.append('CT')
+    logging.info(f"Checking if required modalities {required} are present in: {list_v}")
+    for e in required:
         if e not in list_v:
             return False
-        else:
-            value_ = True
-    return value_
+    return True
 
 
 def verify_bundle(dicom_bundle):
@@ -44,21 +44,28 @@ def verify_full(df: pd.DataFrame) -> bool:
     :param df:
     :return:
     """
+    cfg = Config("dvh-settings").config or {}
+    ct_required = cfg.get("ct_required", True)
+
     result = True
     list_patient = list(set(df["patient_id"].values.tolist()))
     n_patients = len(list_patient)
-    if len(list_patient) > 1:
+    if n_patients > 1:
         logging.info(f"More than one patients in the database {n_patients}")
         result = all(
-            check_if_all_in(list(set(df.loc[df["patient_id"] == patient_id]["modality"].values.tolist())))
+            check_if_all_in(
+                list(set(df.loc[df["patient_id"] == patient_id]["modality"].values.tolist())),
+                ct_required=ct_required,
+            )
             for patient_id in list_patient
         )
-        logging.info(f"All dicom component received ? {result} for {n_patients} patients")
-    elif len(list_patient) == 1:
-        logging.info("Only one patient")
+        logging.info(f"All dicom component received ? {result} for {n_patients} patients (ct_required={ct_required})")
+    elif n_patients == 1:
+        logging.info(f"Only one patient (ct_required={ct_required})")
         patient_id = list_patient[0]
         result = check_if_all_in(
-            list(set(df.loc[df["patient_id"] == patient_id]["modality"].values.tolist()))
+            list(set(df.loc[df["patient_id"] == patient_id]["modality"].values.tolist())),
+            ct_required=ct_required,
         )
     logging.debug(f"All dicom component received ? {result}")
 
@@ -76,6 +83,7 @@ def link_rt_plan_dose(df, rt_plan_uid_list, patient_id, ct, rt_struct):
     :return:
     """
     list_do = []
+    ct_path = ct[0] if ct else None
     for k in rt_plan_uid_list:
         rt_dose = df.loc[(df["referenced_rt_plan_uid"] == k) & (df["modality"] == "RTDOSE")][
             "file_path"].values.tolist()
@@ -84,9 +92,9 @@ def link_rt_plan_dose(df, rt_plan_uid_list, patient_id, ct, rt_struct):
         logging.info(f"RT dose and plan :{rt_dose}, {rt_plan}")
         logging.info(f"rt struct {rt_struct[0]}")
         logging.info(f"rt plan  {rt_plan[0]}")
-        logging.info(f"ct  {ct[0]}")
+        logging.info(f"ct  {ct_path}")
         logging.info(f"rt doe   {rt_dose}")
-        dicom_bundle = DicomBundle(patient_id=patient_id, rt_ct=ct[0], rt_plan=rt_plan[0],
+        dicom_bundle = DicomBundle(patient_id=patient_id, rt_ct=ct_path, rt_plan=rt_plan[0],
                                    rt_dose=rt_dose, rt_struct=rt_struct[0])
         list_do.append(dicom_bundle)
     return list_do
