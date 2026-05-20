@@ -108,9 +108,15 @@ def calculate_dvh_curves(dicom_bundle, str_name=None, gdp=True, db=None, study_u
     structures = dicom_bundle.rt_struct.GetStructures()
 
     output = dvh_c.calculate_dvh_all(dicom_bundle, structures, str_name)
-    if not gdp:
-        return output
-    return_output(dicom_bundle.patient_id, output)
+
     if db is not None:
         save_dvh_to_db(db, dicom_bundle.patient_id, study_uid, output)
+
+    if gdp:
+        try:
+            return_output(dicom_bundle.patient_id, output)
+        except Exception:
+            logging.error("GraphDB upload failed; DVH results were still saved to the database", exc_info=True)
+
     logging.info(f"Calculation complete for {dicom_bundle.patient_id}")
+    return output
