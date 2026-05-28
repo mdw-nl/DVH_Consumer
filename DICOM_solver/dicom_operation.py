@@ -90,13 +90,14 @@ def link_rt_plan_dose(df, rt_plan_uid_list, patient_id, ct, rt_struct):
         rt_plan = df.loc[(df["sop_instance_uid"] == k) & (df["modality"] == "RTPLAN")][
             "file_path"].values.tolist()
         logging.info(f"RT dose and plan :{rt_dose}, {rt_plan}")
-        logging.info(f"rt struct {rt_struct[0]}")
         logging.info(f"rt plan  {rt_plan[0]}")
         logging.info(f"ct  {ct_path}")
         logging.info(f"rt doe   {rt_dose}")
-        dicom_bundle = DicomBundle(patient_id=patient_id, rt_ct=ct_path, rt_plan=rt_plan[0],
-                                   rt_dose=rt_dose, rt_struct=rt_struct[0])
-        list_do.append(dicom_bundle)
+        for struct_path in rt_struct:
+            logging.info(f"rt struct {struct_path}")
+            dicom_bundle = DicomBundle(patient_id=patient_id, rt_ct=ct_path, rt_plan=rt_plan[0],
+                                       rt_dose=rt_dose, rt_struct=struct_path)
+            list_do.append(dicom_bundle)
     return list_do
 
 

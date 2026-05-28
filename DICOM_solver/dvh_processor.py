@@ -1,3 +1,4 @@
+import os
 from .DVH.dvh import DVH_calculation
 import logging
 import traceback
@@ -92,15 +93,7 @@ def process_message(study_uid):
                 logging.info(DELETE_END)
                 if DELETE_END:
                     logging.info(f"Deleting patient data from the database, {DELETE_END}")
-                    try:
-
-                        for dicom_bundle in dicom_bundles:
-                            dicom_bundle.rm_data_patient()
-                    except Exception as e:
-                        logging.warning(f"Error during delete of patient data, Exception Message: {e}")
-                        logging.warning(f"Exception Type: {type(e).__name__}")
-                        logging.warning(traceback.format_exc())
-                        raise e
+                    _cleanup_files(dicom_bundles)
             else:
                 logging.info("No dicom bundles found for the study uid")
     except Exception as e:
@@ -137,3 +130,42 @@ def calculate_dvh_curves(dicom_bundle, str_name=None, gdp=True, db=None, study_u
 
     logging.info(f"Calculation complete for {dicom_bundle.patient_id}")
     return output
+
+
+def _cleanup_files(dicom_bundles):
+    """Delete all DICOM files for a processed study. Dedupes paths shared across
+    bundles (fan-out can produce multiple bundles referencing the same plan, dose,
+    or CT directory) so each file is removed exactly once."""
+    files = set()
+    ct_dirs = set()
+    for b in dicom_bundles:
+        if b.rt_plan_path:
+            files.add(b.rt_plan_path)
+        if b.rt_struct_path:
+            files.add(b.rt_struct_path)
+        for d in b.rt_dose_path or []:
+            files.add(d)
+        if b.rt_ct_path:
+            ct_dirs.add(b.rt_ct_path)
+    for path in files:
+        try:
+            os.remove(path)
+            logging.info(f"Removed: {path}")
+        except FileNotFoundError:
+            logging.debug(f"Already removed: {path}")
+        except Exception as e:
+            logging.warning(f"Error removing {path}: {e}")
+    for ct_dir in ct_dirs:
+        try:
+            for f in os.listdir(ct_dir):
+                full = os.path.join(ct_dir, f)
+                try:
+                    os.remove(full)
+                except FileNotFoundError:
+                    pass
+                except Exception as e:
+                    logging.warning(f"Error removing CT file {full}: {e}")
+        except FileNotFoundError:
+            logging.debug(f"CT dir already cleared: {ct_dir}")
+        except Exception as e:
+            logging.warning(f"Error listing CT dir {ct_dir}: {e}")
