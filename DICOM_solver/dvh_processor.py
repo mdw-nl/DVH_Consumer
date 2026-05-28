@@ -3,7 +3,7 @@ import logging
 import traceback
 from .DVH.output import return_output
 from .DVH.db_writer import save_dvh_to_db
-from .Config.global_var import INSERT_QUERY_DICOM_META, DELETE_END
+from .Config.global_var import INSERT_QUERY_DICOM_META, DELETE_END, QUERY_PATIENT_FROM_STUDY
 from datetime import datetime
 from .combination import combine
 from .utilities import connect_db, get_all_uid
@@ -13,29 +13,46 @@ from .dicom_operation import collect_patients_dicom, verify_full
 def callback_tread(ch, method, properties, body, executor):
     study_uid = body.decode()
     db = None
+    patient_id = None
     try:
         logging.info(f"Message received with uid: {study_uid}")
         db = connect_db()
         ch.basic_ack(delivery_tag=method.delivery_tag)
+        patient_id = _lookup_patient_id(db, study_uid)
         future = executor.submit(process_message, study_uid)
         future.result()
         logging.info("Process completed")
-        _record_status(db, study_uid, True)
+        _record_status(db, study_uid, True, patient_id)
     except Exception as e:
         logging.error(f"Error during calculation, Exception Message: {e}")
         logging.error(f"Exception Type: {type(e).__name__}")
         logging.error(traceback.format_exc())
-        _record_status(db, study_uid, False)
+        _record_status(db, study_uid, False, patient_id)
     finally:
         if db:
             db.disconnect()
 
 
-def _record_status(db, study_uid, success):
+def _lookup_patient_id(db, study_uid):
+    try:
+        row = db.fetch_one(QUERY_PATIENT_FROM_STUDY, (study_uid,))
+    except Exception:
+        logging.error(f"Failed to look up patient_id for study {study_uid}", exc_info=True)
+        return None
+    if not row:
+        logging.warning(f"No dicom_insert row for study {study_uid}; patient_id will be NULL in calculation_status")
+        return None
+    return row[0]
+
+
+def _record_status(db, study_uid, success, patient_id=None):
     if db is None:
         return
     try:
-        db.execute_query(INSERT_QUERY_DICOM_META, (study_uid, success, datetime.now()))
+        db.execute_query(
+            INSERT_QUERY_DICOM_META,
+            (study_uid, success, datetime.now(), patient_id),
+        )
     except Exception:
         logging.error(
             f"Failed to write calculation_status row for {study_uid} (success={success})",
