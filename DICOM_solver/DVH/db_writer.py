@@ -6,8 +6,9 @@ INSERT_DVH_ROW = """
 INSERT INTO dvh_results (
     patient_id, study_uid, structure_name,
     min_dose_gy, mean_dose_gy, max_dose_gy, volume_cc,
-    color, metrics, dvh_points, payload
-) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+    color, metrics, dvh_points, payload,
+    rt_plan_path, rt_dose_paths, effective_dose_type
+) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
 """
 
 
@@ -31,10 +32,12 @@ def _curve(struct_out):
     return curve.get("dvh_points") or []
 
 
-def save_dvh_to_db(db, patient_id, study_uid, output):
+def save_dvh_to_db(db, patient_id, study_uid, output,
+                   rt_plan_path=None, rt_dose_paths=None, effective_dose_type=None):
     if not output:
         logging.info("save_dvh_to_db: empty output, nothing to save")
         return
+    dose_paths_json = json.dumps(rt_dose_paths) if rt_dose_paths is not None else None
     for struct_out in output:
         try:
             params = (
@@ -49,6 +52,9 @@ def save_dvh_to_db(db, patient_id, study_uid, output):
                 json.dumps(_metrics(struct_out)),
                 json.dumps(_curve(struct_out)),
                 json.dumps(struct_out),
+                rt_plan_path,
+                dose_paths_json,
+                effective_dose_type,
             )
             db.execute_query(INSERT_DVH_ROW, params)
         except Exception:

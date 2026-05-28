@@ -120,7 +120,15 @@ def calculate_dvh_curves(dicom_bundle, str_name=None, gdp=True, db=None, study_u
     output = dvh_c.calculate_dvh_all(dicom_bundle, structures, str_name)
 
     if db is not None:
-        save_dvh_to_db(db, dicom_bundle.patient_id, study_uid, output)
+        save_dvh_to_db(
+            db,
+            dicom_bundle.patient_id,
+            study_uid,
+            output,
+            rt_plan_path=dicom_bundle.rt_plan_path,
+            rt_dose_paths=dicom_bundle.rt_dose_path,
+            effective_dose_type=getattr(dicom_bundle, "effective_dose_type", None),
+        )
 
     if gdp:
         try:
@@ -130,6 +138,32 @@ def calculate_dvh_curves(dicom_bundle, str_name=None, gdp=True, db=None, study_u
 
     logging.info(f"Calculation complete for {dicom_bundle.patient_id}")
     return output
+
+
+def reprocess_study(study_uid):
+    """Re-run DVH calculations for a previously-ingested study.
+
+    Requires the original DICOM files to still exist on disk (DELETE_END must
+    have been false during the original run, or the data re-uploaded).
+    Duplicate rows in dvh_results from prior runs are left in place; distinguish
+    runs by created_at. Outcome is logged in calculation_status.
+    """
+    db = None
+    patient_id = None
+    try:
+        logging.info(f"Reprocess requested for study {study_uid}")
+        db = connect_db()
+        patient_id = _lookup_patient_id(db, study_uid)
+        process_message(study_uid)
+        _record_status(db, study_uid, True, patient_id)
+        logging.info(f"Reprocess of {study_uid} complete")
+    except Exception as e:
+        logging.error(f"Reprocess of {study_uid} failed: {e}")
+        logging.error(traceback.format_exc())
+        _record_status(db, study_uid, False, patient_id)
+    finally:
+        if db:
+            db.disconnect()
 
 
 def _cleanup_files(dicom_bundles):

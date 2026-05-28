@@ -18,28 +18,34 @@ class DataAPI:
             raise e
 
     def dvh_api(self, structure_name):
+        if not verify_full(self.df):
+            return None
+        dicom_bundles = collect_patients_dicom(self.df)
+        if not dicom_bundles:
+            return None
 
-        verify = verify_full(self.df)
-        if verify:
-            dicom_bundles = collect_patients_dicom(self.df)
+        for dicom_bundle in dicom_bundles:
+            try:
+                res = calculate_dvh_curves(dicom_bundle, str_name=structure_name, gdp=False)
+            except Exception as e:
+                logging.warning(
+                    f"Bundle for patient {dicom_bundle.patient_id} failed: {e}"
+                )
+                logging.warning(traceback.format_exc())
+                continue
+            if res:
+                eff_type = getattr(dicom_bundle, "effective_dose_type", "unknown")
+                logging.info(
+                    f"DVH for patient {dicom_bundle.patient_id} "
+                    f"structure '{structure_name}' found "
+                    f"(effective_dose_type={eff_type})"
+                )
+                return res
 
-            if dicom_bundles:
-                for dicom_bundle in dicom_bundles:
-                    logging.info(f"Patients to analyze:{len(dicom_bundles)} ")
-                    logging.info(f"{dicom_bundles[0]}")
-                    try:
-
-                        res = calculate_dvh_curves(dicom_bundle, str_name=structure_name, gdp=False)
-                        logging.info(f"Dvh calculation complete for patient {dicom_bundle.patient_id} "
-                                     f"{res}")
-                        return res
-                    except Exception as e:
-                        logging.warning(f"Error during calculation, Exception Message: {e}")
-                        logging.warning(f"Exception Type: {type(e).__name__}")
-                        logging.warning(traceback.format_exc())
-                        raise e
-        else:
-            return
+        logging.warning(
+            f"No bundle yielded a DVH for structure '{structure_name}'"
+        )
+        return None
 
     def close(self):
         if self.db:

@@ -1,11 +1,11 @@
 import threading
 
 from DICOM_solver.queue_processing import Consumer
-from DICOM_solver.dvh_processor import callback_tread
+from DICOM_solver.dvh_processor import callback_tread, reprocess_study
 import logging
 from DICOM_solver.config_handler import Config
 import uvicorn
-from fastapi import FastAPI, Body, Query, HTTPException
+from fastapi import FastAPI, Body, Query, HTTPException, BackgroundTasks
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse
 from DICOM_solver.API.retrieve_Data import DataAPI
@@ -26,7 +26,7 @@ def calculate_dvh(patient_id: str, structure: str):
         dp = DataAPI()
         dp.get_data_api(patient_id)
         res = dp.dvh_api(structure_name=structure)
-        if res is None:
+        if not res:
             raise HTTPException(
                 status_code=404,
                 detail=f"No DVH data for patient '{patient_id}', structure '{structure}'",
@@ -35,6 +35,23 @@ def calculate_dvh(patient_id: str, structure: str):
         if dp:
             dp.close()
     return JSONResponse(content=res, media_type="application/ld+json")
+
+
+@app.post("/reprocess/{study_uid}", tags=["DVH"], summary="Reprocess a previously-ingested study")
+def reprocess(study_uid: str, background_tasks: BackgroundTasks):
+    """Schedule a re-run of the DVH calculations for a study that was already ingested.
+
+    Requires the original DICOM files to still exist on disk (DELETE_END must
+    have been false during the original run, or the data re-uploaded by the listener).
+
+    Returns 202 immediately; the calculation runs in the background.
+    Final outcome (success or failure) is recorded in calculation_status.
+    """
+    background_tasks.add_task(reprocess_study, study_uid)
+    return JSONResponse(
+        status_code=202,
+        content={"study_uid": study_uid, "status": "reprocessing scheduled"},
+    )
 
 
 # Function to start the consumer and handle exceptions

@@ -1,6 +1,8 @@
 import logging
 import os
+from dicompylercore.dicomparser import DicomParser
 from .DVH.dicom_bundle import DicomBundle
+from .DVH.dose_handler import analyze_doses
 from .config_handler import Config
 import pandas as pd
 
@@ -85,20 +87,63 @@ def link_rt_plan_dose(df, rt_plan_uid_list, patient_id, ct, rt_struct):
     list_do = []
     ct_path = ct[0] if ct else None
     for k in rt_plan_uid_list:
-        rt_dose = df.loc[(df["referenced_rt_plan_uid"] == k) & (df["modality"] == "RTDOSE")][
-            "file_path"].values.tolist()
-        rt_plan = df.loc[(df["sop_instance_uid"] == k) & (df["modality"] == "RTPLAN")][
-            "file_path"].values.tolist()
-        logging.info(f"RT dose and plan :{rt_dose}, {rt_plan}")
-        logging.info(f"rt plan  {rt_plan[0]}")
-        logging.info(f"ct  {ct_path}")
-        logging.info(f"rt doe   {rt_dose}")
+        rt_dose_paths = df.loc[
+            (df["referenced_rt_plan_uid"] == k) & (df["modality"] == "RTDOSE")
+        ]["file_path"].values.tolist()
+        rt_plan = df.loc[
+            (df["sop_instance_uid"] == k) & (df["modality"] == "RTPLAN")
+        ]["file_path"].values.tolist()
+
+        dose_parsers = []
+        for p in rt_dose_paths:
+            try:
+                dose_parsers.append(DicomParser(p))
+            except Exception:
+                logging.error(f"Failed to read RT Dose {p}", exc_info=True)
+        effective_doses = analyze_doses(dose_parsers, rt_dose_paths)
+        if not effective_doses:
+            logging.warning(f"Plan {rt_plan[0]} produced no effective doses; skipping")
+            continue
+
+        logging.info(
+            f"RT plan {rt_plan[0]} -> {len(effective_doses)} effective dose(s); ct {ct_path}"
+        )
         for struct_path in rt_struct:
             logging.info(f"rt struct {struct_path}")
-            dicom_bundle = DicomBundle(patient_id=patient_id, rt_ct=ct_path, rt_plan=rt_plan[0],
-                                       rt_dose=rt_dose, rt_struct=struct_path)
-            list_do.append(dicom_bundle)
+            for eff in effective_doses:
+                list_do.append(_build_bundle(
+                    patient_id=patient_id,
+                    rt_ct_path=ct_path,
+                    rt_plan_path=rt_plan[0],
+                    rt_struct_path=struct_path,
+                    eff=eff,
+                ))
     return list_do
+
+
+def _build_bundle(patient_id, rt_ct_path, rt_plan_path, rt_struct_path, eff):
+    """Build a DicomBundle for one (plan, struct, effective_dose) tuple.
+
+    Uses ``read=False`` and assigns rt_plan / rt_struct / rt_dose explicitly to avoid
+    re-reading dose files that ``analyze_doses`` already consumed (especially when
+    the effective dose is a synthetic summed result that doesn't correspond to any
+    single file on disk).
+    """
+    bundle = DicomBundle(
+        patient_id=patient_id,
+        rt_ct=rt_ct_path,
+        rt_plan=rt_plan_path,
+        rt_dose=eff.source_paths,
+        rt_struct=rt_struct_path,
+        read=False,
+    )
+    bundle.rt_plan = DicomParser(rt_plan_path)
+    bundle.rt_struct = DicomParser(rt_struct_path)
+    bundle.rt_dose = [eff.dose_parser]
+    bundle.rt_dose_path = eff.source_paths
+    bundle.effective_dose_type = eff.type
+    bundle.effective_dose_description = eff.description
+    return bundle
 
 
 def collect_patients_dicom(df: pd.DataFrame):
