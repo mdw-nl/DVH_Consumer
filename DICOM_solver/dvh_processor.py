@@ -1,3 +1,4 @@
+import json
 import os
 from .DVH.dvh import DVH_calculation
 import logging
@@ -28,7 +29,7 @@ def callback_tread(ch, method, properties, body, executor):
         logging.error(f"Error during calculation, Exception Message: {e}")
         logging.error(f"Exception Type: {type(e).__name__}")
         logging.error(traceback.format_exc())
-        _record_status(db, study_uid, False, patient_id)
+        _record_status(db, study_uid, False, patient_id, error=e)
     finally:
         if db:
             db.disconnect()
@@ -46,13 +47,20 @@ def _lookup_patient_id(db, study_uid):
     return row[0]
 
 
-def _record_status(db, study_uid, success, patient_id=None):
+def _record_status(db, study_uid, success, patient_id=None, error=None):
     if db is None:
         return
+    error_json = None
+    if error is not None:
+        error_json = json.dumps({
+            "type": type(error).__name__,
+            "message": str(error)[:2000],
+            "traceback": traceback.format_exc()[:5000],
+        })
     try:
         db.execute_query(
             INSERT_QUERY_DICOM_META,
-            (study_uid, success, datetime.now(), patient_id),
+            (study_uid, success, datetime.now(), patient_id, error_json),
         )
     except Exception:
         logging.error(
@@ -160,7 +168,7 @@ def reprocess_study(study_uid):
     except Exception as e:
         logging.error(f"Reprocess of {study_uid} failed: {e}")
         logging.error(traceback.format_exc())
-        _record_status(db, study_uid, False, patient_id)
+        _record_status(db, study_uid, False, patient_id, error=e)
     finally:
         if db:
             db.disconnect()
