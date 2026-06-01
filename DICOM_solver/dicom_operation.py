@@ -93,6 +93,10 @@ def link_rt_plan_dose(df, rt_plan_uid_list, patient_id, ct, rt_struct):
         rt_plan = df.loc[
             (df["sop_instance_uid"] == k) & (df["modality"] == "RTPLAN")
         ]["file_path"].values.tolist()
+        if not rt_plan:
+            logging.warning(f"No RTPLAN file found for referenced plan UID {k}; skipping")
+            continue
+        rt_plan_path = rt_plan[0]
 
         dose_parsers = []
         for p in rt_dose_paths:
@@ -102,11 +106,11 @@ def link_rt_plan_dose(df, rt_plan_uid_list, patient_id, ct, rt_struct):
                 logging.error(f"Failed to read RT Dose {p}", exc_info=True)
         effective_doses = analyze_doses(dose_parsers, rt_dose_paths)
         if not effective_doses:
-            logging.warning(f"Plan {rt_plan[0]} produced no effective doses; skipping")
+            logging.warning(f"Plan {rt_plan_path} produced no effective doses; skipping")
             continue
 
         logging.info(
-            f"RT plan {rt_plan[0]} -> {len(effective_doses)} effective dose(s); ct {ct_path}"
+            f"RT plan {rt_plan_path} -> {len(effective_doses)} effective dose(s); ct {ct_path}"
         )
         for struct_path in rt_struct:
             logging.info(f"rt struct {struct_path}")
@@ -114,7 +118,7 @@ def link_rt_plan_dose(df, rt_plan_uid_list, patient_id, ct, rt_struct):
                 list_do.append(_build_bundle(
                     patient_id=patient_id,
                     rt_ct_path=ct_path,
-                    rt_plan_path=rt_plan[0],
+                    rt_plan_path=rt_plan_path,
                     rt_struct_path=struct_path,
                     eff=eff,
                 ))
@@ -157,10 +161,10 @@ def collect_patients_dicom(df: pd.DataFrame):
     result_list = []
     for patient_id in list_patient:
         df_o_p: pd.DataFrame = df.loc[df["patient_id"] == patient_id]
-        ref_rt_plan_uid_list = df_o_p["referenced_rt_plan_uid"].values.tolist()
+        ref_rt_plan_uid_list = df_o_p.loc[df_o_p["modality"] == "RTDOSE"]["referenced_rt_plan_uid"].values.tolist()
         rt_struct = df_o_p.loc[df_o_p["modality"] == "RTSTRUCT"]["file_path"].values.tolist()
         ct = df_o_p.loc[df_o_p["modality"] == "CT"]["file_path"].values.tolist()
-        ref_rt_plan_uid_list = list({uid for uid in ref_rt_plan_uid_list if uid != "UNKNOWN"})
+        ref_rt_plan_uid_list = list({uid for uid in ref_rt_plan_uid_list if uid and uid != "UNKNOWN" and pd.notna(uid)})
         dicom_bundles = link_rt_plan_dose(df_o_p, ref_rt_plan_uid_list, patient_id, ct, rt_struct)
         result_list.extend(dicom_bundles)
 

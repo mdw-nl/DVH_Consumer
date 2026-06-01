@@ -28,7 +28,22 @@ def get_all_uid(db, uid):
     :return:
     """
     try:
-        df = pd.read_sql_query(QUERY_UID, db.conn,params=(uid,))
+        df = pd.read_sql_query(QUERY_UID, db.conn, params=(uid,))
+        if not df.empty and "RTSTRUCT" not in df["modality"].values:
+            patient_id = df["patient_id"].iloc[0]
+            extra = pd.read_sql_query(
+                "SELECT * FROM public.dicom_insert "
+                "WHERE patient_id = %s AND modality = 'RTSTRUCT' "
+                "ORDER BY timestamp DESC LIMIT 1",
+                db.conn,
+                params=(patient_id,),
+            )
+            if not extra.empty:
+                logging.warning(
+                    f"Adding RTSTRUCT for patient {patient_id} via patient_id fallback "
+                    f"(study_instance_uid={extra['study_instance_uid'].values[0]})"
+                )
+                df = pd.concat([df, extra], ignore_index=True)
     except Exception as e:
         raise e
     return df

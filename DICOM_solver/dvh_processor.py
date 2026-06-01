@@ -104,6 +104,9 @@ def process_message(study_uid):
                     _cleanup_files(dicom_bundles)
             else:
                 logging.info("No dicom bundles found for the study uid")
+        else:
+            present = sorted(set(result["modality"].unique())) if not result.empty else []
+            raise Exception(f"Study {study_uid} incomplete; modalities present: {present}")
     except Exception as e:
         logging.warning(f"Exception Type: {type(e).__name__}")
         logging.warning(f"Exception Message: {e}")
