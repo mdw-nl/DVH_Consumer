@@ -83,6 +83,10 @@ def process_message(study_uid):
             raise Exception(f"Study uid is : {study_uid}")
         logging.info(f"The study uid is :{study_uid}")
         result = get_all_uid(db, study_uid)
+        expected_patient = _lookup_patient_id(db, study_uid)
+        if expected_patient is not None and not result.empty:
+            expected_patient = expected_patient.strip()
+            result = result[result["patient_id"].astype(str).str.strip() == expected_patient]
         verified = verify_full(result)
         if verified:
             logging.info(f"result is :{result}")
