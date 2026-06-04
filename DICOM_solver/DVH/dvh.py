@@ -29,12 +29,20 @@ def prepare_output(dvh_points, structure, calc_dvh, dict_value_v, list_value_d):
     logging.info(f"Preparing additional DVH values for output...{dict_value_v}")
     for k, v in dict_value_v.items():
         logging.debug(f"Processing key: {k} with value: {v}")
+        if v is None:
+            logging.debug(f"Skipping {k} (no value computed)")
+            continue
         structOut[k] = {"@id": f"{id_data}/{k}", "unit": "Gray", "value": float(v)}
         logging.debug(f"Added {k} with value {v} to output.")
 
     for k in list_value_d:
         logging.debug(f"Processing {k}")
-        structOut[k] = {"@id": f"{id_data}/{k}", "unit": "Gray", "value": float(getattr(calc_dvh, k).value)}
+        try:
+            value = float(getattr(calc_dvh, k).value)
+        except (AttributeError, ValueError, TypeError) as e:
+            logging.warning(f"Value not available for {k}, skipping: {e}")
+            continue
+        structOut[k] = {"@id": f"{id_data}/{k}", "unit": "Gray", "value": value}
         logging.debug(f"Added {k} ")
 
 
